@@ -13,15 +13,22 @@ pip install git+https://github.com/IHCantabria/IHSetUtils.git
 ---
 ## :zap: Main methods
 
-* ihdata2ncEBSC:
+* gow2ncEBSC:
 ```python
-# MallaSMC class represents a structured mesh for SMC (SistemadeModelado Costero) simulations.
-ihdata2ncEBSC(gow, gos, got)
+# transform GOW data to standart wac.nc IH-SET file
+gow2ncEBSC(gowPath)
 ```
+* gos2ncEBSC
+```python
+# transform GOS data to standart sl.nc IH-SET file
+gos2ncEBSC(gosPath)
 ```
-Attributes:
-    - 
+* got2ncEBSC
+```python
+# transform GOT data to standart sl.nc IH-SET file
+got2ncEBSC(gotPath)
 ```
+
 
 ## :package: Package structures
 ````
