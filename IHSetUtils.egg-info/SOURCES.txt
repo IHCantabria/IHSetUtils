@@ -1,0 +1,10 @@
+LICENSE
+README.md
+setup.py
+IHSetUtils/__init__.py
+IHSetUtils/utils.py
+IHSetUtils.egg-info/PKG-INFO
+IHSetUtils.egg-info/SOURCES.txt
+IHSetUtils.egg-info/dependency_links.txt
+IHSetUtils.egg-info/requires.txt
+IHSetUtils.egg-info/top_level.txt

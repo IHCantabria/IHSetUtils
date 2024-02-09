@@ -8,10 +8,7 @@ setup(
     install_requires=[
         'numpy',
         'scipy',
-        'matplotlib',
-        'pandas',
-        'mat73'
-        # Adicione aqui outras dependências, se necessário
+        'xarray'
     ],
     author='Lucas de Freitas Pereira',
     author_email='lucas.defreitas@unican.es',
