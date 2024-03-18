@@ -1,8 +1,8 @@
 import numpy as np
 import scipy.optimize as optimize
-from .geometry import rel_angle_cartesian, nauticalDir2cartesianDir
+from .geometry import rel_angle_cartesian, nauticalDir2cartesianDir, cartesianDir2nauticalDir, abs_angle_cartesian
 
-def BreakingPropagation(H1, T1, DIR1, h1, ANGbati, breakType):
+def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, breakType):
     ###########################################################################
     # Propagation of waves using linear theory assuming rectilinear & parallel bathymetry
     #
@@ -11,7 +11,7 @@ def BreakingPropagation(H1, T1, DIR1, h1, ANGbati, breakType):
     # T1:        wave period.
     # DIR1:      wave direction. Nautical convention.
     # h1:        depth of wave conditions.
-    # ANGbati:   bathymetry angle; the normal of the shoreline. Cartesian notation
+    # bathy_angle:   bathymetry angle; the normal of the shoreline. Cartesian notation
     # breakType: type of breaking condition. Spectral | monochromatic.
     #
     # OUTPUT:
@@ -25,7 +25,7 @@ def BreakingPropagation(H1, T1, DIR1, h1, ANGbati, breakType):
     elif breakType == "spectral":
         Bcoef = 0.45
 
-    DIRrel = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), ANGbati)
+    DIRrel = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), bathy_angle)
 
     h2l0 = H1 / Bcoef  # initial condition for breaking depth
 
@@ -41,20 +41,20 @@ def BreakingPropagation(H1, T1, DIR1, h1, ANGbati, breakType):
     DIR2[H1 <= 0.1] = DIR1[H1 <= 0.1]
     h2[H1 <= 0.1] = h2l0[H1 <= 0.1]
 
-    propProf = (np.abs(DIRrel) <= 90) & (H1 > 0.1) & (h2l0 < h1)
-    propProf = np.array(propProf)
+    idx = (np.abs(DIRrel) <= 90) & (H1 > 0.1) & (h2l0 < h1)
+    idx = np.array(idx)
 
-    if np.sum(propProf) > 0:
+    if np.sum(idx) > 0:
 
         def myFun(x):
-            return LinearShoalBreak_Residual(x, H1[propProf], T1[propProf], DIR1[propProf], h1[propProf], ANGbati[propProf], Bcoef)
+            return LinearShoalBreak_Residual(x, H1[idx], T1[idx], DIR1[idx], h1[idx], bathy_angle[idx], Bcoef)
 
-        h2l = optimize.newton_krylov(myFun, h2l0[propProf], method="minres")
+        h2l = optimize.newton_krylov(myFun, h2l0[idx], method="minres")
 
-        H2l, DIR2l = LinearShoalBreak_ResidualVOL(h2l, H1[propProf], T1[propProf], DIR1[propProf], h1[propProf], ANGbati[propProf], Bcoef)
-        H2[propProf] = H2l
-        DIR2[propProf] = DIR2l
-        h2[propProf] = h2l
+        H2l, DIR2l = LinearShoalBreak_ResidualVOL(h2l, H1[idx], T1[idx], DIR1[idx], h1[idx], bathy_angle[idx], Bcoef)
+        H2[idx] = H2l
+        DIR2[idx] = DIR2l
+        h2[idx] = h2l
 
     return H2, DIR2, h2
 
@@ -97,7 +97,7 @@ def hunt(T, d):
     
     return L
 
-def LinearShoal(H1, T1, DIR1, h1, h2, ANGbati):
+def LinearShoal(H1, T1, DIR1, h1, h2, bathy_angle):
     ###########################################################################    
     # Wave shoaling & refraction applying linear theory with parallel; rectilinear bathymetry.
     #    
@@ -107,7 +107,7 @@ def LinearShoal(H1, T1, DIR1, h1, h2, ANGbati):
     # DIR1:      initial wave direction. Nautical convention.
     # h1:        initial depth of wave conditions.
     # h2:        final depth of wave conditions.
-    # ANGbati:   bathymetry angle; the normal of the shoreline. Cartesian convention
+    # bathy_angle:   bathymetry angle; the normal of the shoreline. Cartesian convention
     #
     # OUTPUT:
     # H2:        wave height during breaking. Wave period is assumed invariant due to linear theory.
@@ -115,7 +115,7 @@ def LinearShoal(H1, T1, DIR1, h1, h2, ANGbati):
     ###########################################################################
 
     
-    relDir1 = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), ANGbati)
+    relDir1 = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), bathy_angle)
 
     L1 = hunt(T1, h1)
     L2 = hunt(T1, h2)
@@ -125,21 +125,21 @@ def LinearShoal(H1, T1, DIR1, h1, h2, ANGbati):
     KS = np.sqrt(CG1 / CG2)
     KR = np.sqrt(np.cos(relDir1 * np.pi / 180) / np.cos(relDir2 * np.pi / 180))
     H2 = H1 * KS * KR
-    DIR2 = cartesianDir2nauticalDir(abs_angle_cartesian(relDir2, ANGbati))
+    DIR2 = cartesianDir2nauticalDir(abs_angle_cartesian(relDir2, bathy_angle))
     
     return H2, DIR2
 
-def LinearShoalBreak_Residual(h2l, H1, T1, DIR1, h1, ANGbati, Bcoef):
+def LinearShoalBreak_Residual(h2l, H1, T1, DIR1, h1, bathy_angle, Bcoef):
 
-    H2l, _ = LinearShoal(H1, T1, DIR1, h1, h2l, ANGbati)
+    H2l, _ = LinearShoal(H1, T1, DIR1, h1, h2l, bathy_angle)
     H2comp = h2l * Bcoef
     res = H2l - H2comp
 
     return res
 
-def LinearShoalBreak_ResidualVOL(h2l, H1, T1, DIR1, h1, ANGbati, Bcoef):
+def LinearShoalBreak_ResidualVOL(h2l, H1, T1, DIR1, h1, bathy_angle, Bcoef):
 
-    H2l, DIR2l = LinearShoal(H1, T1, DIR1, h1, h2l, ANGbati)
+    H2l, DIR2l = LinearShoal(H1, T1, DIR1, h1, h2l, bathy_angle)
     H2comp = h2l * Bcoef
     res = H2l - H2comp
 
