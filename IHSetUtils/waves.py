@@ -29,10 +29,11 @@ def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, breakType):
 
     h2l0 = H1 / Bcoef  # initial condition for breaking depth
 
-    H2 = np.zeros(len(H1))
-    DIR2 = np.zeros(len(DIR1))
-    h2 = np.zeros(len(H1))
+    H2 = np.zeros_like(H1)
+    DIR2 = np.zeros_like(DIR1)
+    h2 = np.zeros_like(H1)
 
+    
     H2[h2l0 >= h1] = H1[h2l0 >= h1]
     DIR2[h2l0 >= h1] = DIR1[h2l0 >= h1]
     h2[h2l0 >= h1] = h2l0[h2l0 >= h1]  # check that the initial depth is deeper than the breaking value
@@ -89,7 +90,7 @@ def hunt(T, d):
 
     G = (2 * np.pi / T) ** 2 * (d / g)
     
-    p = np.poly1d([0.6522, 0.4622, 0.0864, 0.0675, 1.0])
+    p = np.poly1d([0.0675, 0.0864, 0.4622, 0.6522, 1.0])
     
     F = G + 1.0 / p(G)
 
