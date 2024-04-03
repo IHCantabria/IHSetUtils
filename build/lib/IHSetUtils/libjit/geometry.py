@@ -17,8 +17,8 @@ def abs_angle_cartesian(relD, batiD):
     ###########################################################################    
     
     waveD = relD + batiD
-    waveD[waveD > 180] -= 360
-    waveD[waveD < -180] += 360
+    waveD[waveD > 180] = waveD[waveD > 180] - 360
+    waveD[waveD < -180] = waveD[waveD < -180] + 360
     
     return waveD
 
@@ -50,7 +50,7 @@ def cartesianDir2nauticalDir(cDir):
     ###########################################################################    
     
     nDir = 90.0 - cDir
-    nDir[nDir < 0] += 360.0
+    nDir[nDir < 0] = nDir[nDir < 0] + 360.0
     
     return nDir
 
@@ -74,7 +74,7 @@ def interp_lon(x, lon, xq, *varargin):
     else:
         out = np.interp(x, ulon, xq)
     out = out % 360
-    out[out > 180] -= 360
+    out[out > 180] = out[out > 180] - 360
     return out
 
 @jit
@@ -85,7 +85,7 @@ def nauticalDir2cartesianDir(nDir):
     ###########################################################################    
    
     cDir = 90.0 - nDir
-    cDir[cDir < -180.0] += 360.0
+    cDir[cDir < -180.0] = cDir[cDir < -180.0] + 360.0
     
     return cDir
 
@@ -99,7 +99,7 @@ def nauticalDir2cartesianDirP(nDir):
     cDir = 90.0 - nDir
     
     if cDir < -180.0:
-        cDir += 360.0
+        cDir = cDir + 360.0
     
     return cDir
 
@@ -125,8 +125,8 @@ def rel_angle_cartesian(waveD, batiD):
     ###########################################################################    
     
     relD = waveD - batiD
-    relD[relD > 180.] -= 360.0
-    relD[relD < -180.] += 360.0
+    relD[relD > 180.] = relD[relD > 180.] - 360.0
+    relD[relD < -180.] = relD[relD < -180.] + 360.0
     
     return relD
 
@@ -147,9 +147,9 @@ def rel_angle_cartesianP(waveD, batiD):
 
     relD = waveD - batiD
     if relD > 180:
-        relD -= 360.0
+        relD = relD - 360.0
     elif relD < -180.0:
-        relD += 360.0
+        relD = relD + 360.0
  
     return relD
 
