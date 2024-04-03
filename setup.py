@@ -2,13 +2,14 @@ from setuptools import setup, find_packages
 
 setup(
     name='IHSetUtils',
-    version='1.1.0',
+    version='1.1.1',
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
         'numpy',
         'scipy',
-        'xarray'
+        'xarray',
+        'numba'
     ],
     author='Lucas de Freitas Pereira',
     author_email='lucas.defreitas@unican.es',
