@@ -11,3 +11,7 @@ IHSetUtils.egg-info/SOURCES.txt
 IHSetUtils.egg-info/dependency_links.txt
 IHSetUtils.egg-info/requires.txt
 IHSetUtils.egg-info/top_level.txt
+IHSetUtils/libjit/__init__.py
+IHSetUtils/libjit/geometry.py
+IHSetUtils/libjit/morfology.py
+IHSetUtils/libjit/waves.py
