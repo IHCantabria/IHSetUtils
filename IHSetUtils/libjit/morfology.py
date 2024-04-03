@@ -1,6 +1,6 @@
 import numpy as np
 from numba import jit
-from .libjit.geometry import rel_angle_cartesian, nauticalDir2cartesianDir
+from .geometry import rel_angle_cartesian, nauticalDir2cartesianDir
 
 @jit
 def ADEAN(D50):

@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.optimize as optimize
 from numba import jit
-from .libjit.geometry import rel_angle_cartesian, nauticalDir2cartesianDir, cartesianDir2nauticalDir, abs_angle_cartesian
+from .geometry import rel_angle_cartesian, nauticalDir2cartesianDir, cartesianDir2nauticalDir, abs_angle_cartesian
 
 # @jit
 def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, breakType):
