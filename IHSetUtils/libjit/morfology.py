@@ -47,7 +47,7 @@ def ALST(Hb, Dirb, hb, bathy_angle, K):
     gammab = Hb[idx_brk] / hb[idx_brk]
     gammab[np.isnan(gammab)] = np.Inf
     cnts = rho * np.sqrt(9.81) / (16. * np.sqrt(gammab) * (rhos - rho) * (1.0 - p))
-    q0[idx_brk] = K[idx_brk] * cnts * (Hb[idx_brk] ** (5. / 2.))
+    q0[idx_brk] = K * cnts * (Hb[idx_brk] ** (5. / 2.))
     q[idx_brk] = q0[idx_brk] * np.sin(2. * np.deg2rad(rel_dir[idx_brk]))
 
     q[0] = q[1]

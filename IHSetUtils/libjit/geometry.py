@@ -83,9 +83,12 @@ def nauticalDir2cartesianDir(nDir):
     # Nautical convention with 0 in North & positive clockwise TO 
     # Cartesian convention with 0 in East & positive counterclockwise.
     ###########################################################################    
-   
+    
+
     cDir = 90.0 - nDir
-    cDir[cDir < -180.0] = cDir[cDir < -180.0] + 360.0
+    ii = cDir < -180.0
+
+    cDir[ii] = cDir[ii] + 360.0
     
     return cDir
 
@@ -195,3 +198,82 @@ def shore_angle(XN, YN, wave_angle):
             #             method[i] = "CenDiff"
                 
     return shoreAng
+
+
+@jit
+def nauticalDir2cartesianDirL(nDir):
+    ###########################################################################    
+    # Nautical convention with 0 in North & positive clockwise TO 
+    # Cartesian convention with 0 in East & positive counterclockwise.
+    ###########################################################################    
+    
+
+    cDir = 90.0 - nDir
+    if cDir < -180.0:
+        cDir = cDir + 360.0
+    
+    return cDir
+
+@jit
+def rel_angle_cartesianL(waveD, batiD):
+    ###########################################################################    
+    # Relative angle (in degrees) between wave direction & bathymetry with 
+    # angles in cartesian coordinates, angle between [180,-180], 
+    # 0 is in EAST & positive counterclockwise.
+    #
+    # INPUT:
+    # waveD:    wave angle in Cartesian notation.
+    # batiD:    bathymetry angle (normal to the shoreline) in Cartesian notation.
+    #
+    # OUTPUT:
+    # relD:     relative wave angle between wave and bathymetry; 0 is the bathymetry & positive counterclockwise.
+    ###########################################################################    
+    
+    relD = waveD - batiD
+
+    if relD >= 180.0:
+        return relD - 360.0
+    elif relD < -180.0:
+        return relD + 360.0
+    else:
+        return relD
+
+@jit
+def abs_angle_cartesianL(relD, batiD):
+    ###########################################################################    
+    # Absolute angle in cartesian notation, angle between [180,-180], 
+    # 0 is in EAST & positive counterclockwise.
+    # From a relative angle from wave & bathymetry.
+    # The same as rel_angle_cartesian[relD,-1*batiD]
+    # INPUT:
+    # relD:     relative wave angle between wave and bathymetry; 0 is the bathymetry & positive counterclockwise.
+    # batiD:    bathymetry angle (normal to the shoreline) in Cartesian notation.
+    #
+    # OUTPUT:
+    # waveD:    wave angle in Cartesian notation.
+    ###########################################################################    
+    
+    waveD = relD + batiD
+
+    if waveD > 180.0:
+        return waveD - 360.0
+    elif waveD < -180.0:
+        return waveD + 360.0
+    
+    return waveD
+
+
+@jit
+def cartesianDir2nauticalDirL(cDir):
+    ###########################################################################    
+    # Cartesian convention with 0 in East & positive counterclockwise TO
+    # Nautical convention with 0 in North & positive clockwise. 
+    ###########################################################################    
+    
+    nDir = 90.0 - cDir
+    if nDir < 0:
+        return nDir + 360.0
+    else:
+        return nDir
+    
+    return nDir
