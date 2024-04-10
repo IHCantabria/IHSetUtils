@@ -94,16 +94,13 @@ def Hs12Calc(Hs, Tp):
     # Ts12:     Significant wave period exceed 12 hours in a year.
     ###########################################################################   
     
-    Hs12 = np.zeros_like(Hs)
-    Ts12 = np.zeros_like(Tp)
-    for i in range(Hs.shape[1]):
-        Hs12calc = np.percentile(Hs[:, i], ((365 * 24 - 12) / (365 * 24)) * 100)
-        buscHS12 = (Hs[:, i] >= (Hs12calc - 0.1)) & (Hs[:, i] <= (Hs12calc + 0.1))
-        f, xi = np.histogram(Tp[buscHS12, i], density=True)
-        ii = np.argmax(f)
-        Ts12[:, i] = xi[ii]
-        Hs12[:, i] = Hs12calc
-    return Hs12, Ts12
+    Hs12calc = np.percentile(Hs, ((365 * 24 - 12) / (365 * 24)) * 100)
+    buscHS12 = (Hs >= (Hs12calc - 0.1)) & (Hs <= (Hs12calc + 0.1))
+    f, xi = np.histogram(Tp[buscHS12], density=True)
+    ii = np.argmax(f)
+    Ts12 = xi[ii]
+    
+    return  Hs12calc, Ts12
 
 def wast(hb, D50):
    ###########################################################################    
