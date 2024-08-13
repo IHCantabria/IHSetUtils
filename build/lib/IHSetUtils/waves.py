@@ -115,7 +115,7 @@ def LinearShoal(H1, T1, DIR1, h1, h2, bathy_angle):
     ###########################################################################
 
     
-    relDir1 = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), bathy_angle)
+    relDir1 = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), nauticalDir2cartesianDir(bathy_angle))
 
     L1 = hunt(T1, h1)
     L2 = hunt(T1, h2)
@@ -223,7 +223,7 @@ def BreakingPropagation_1L(H1, T1, DIR1, h1, bathy_angle, breakType):
     elif breakType == "spectral":
         Bcoef = 0.45
 
-    DIRrel = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), bathy_angle)
+    DIRrel = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), nauticalDir2cartesianDir(bathy_angle))
 
     h2l0 = H1 / Bcoef  # initial condition for breaking depth
 

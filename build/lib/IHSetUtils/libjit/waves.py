@@ -183,7 +183,7 @@ def LinearShoal(H1, T1, DIR1, h1, h2, bathy_angle):
     ###########################################################################
 
     
-    relDir1 = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), bathy_angle)
+    relDir1 = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), nauticalDir2cartesianDir(bathy_angle))
 
     L1 = hunt(T1, h1)
     L2 = hunt(T1, h2)
