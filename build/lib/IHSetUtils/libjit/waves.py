@@ -1,6 +1,6 @@
 import numpy as np
 from numba import jit
-from .geometry import rel_angle_cartesian, nauticalDir2cartesianDir, cartesianDir2nauticalDir, abs_angle_cartesian, rel_angle_cartesianL, nauticalDir2cartesianDirL, cartesianDir2nauticalDirL, abs_angle_cartesianL, nauticalDir2cartesianDirP
+from .geometry import rel_angle_cartesian, nauticalDir2cartesianDir, cartesianDir2nauticalDir, abs_angle_cartesian, rel_angle_cartesianL, nauticalDir2cartesianDirL, cartesianDir2nauticalDirL, abs_angle_cartesianL
 
 @jit
 def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, Bcoef):
@@ -21,7 +21,7 @@ def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, Bcoef):
     # h2:        depth of breaking
     ###########################################################################
 
-    DIRrel = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), nauticalDir2cartesianDirP(bathy_angle))
+    DIRrel = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), nauticalDir2cartesianDir(bathy_angle))
 
     h2l0 = H1 / Bcoef  # initial condition for breaking depth
 
