@@ -23,9 +23,6 @@ def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, Bcoef):
 
     DIRrel = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), nauticalDir2cartesianDirP(bathy_angle))
 
-    if len(h1) == 1:
-        h1 = np.zeros_like(H1) + h1
-
     h2l0 = H1 / Bcoef  # initial condition for breaking depth
 
     H2 = np.zeros_like(H1)
