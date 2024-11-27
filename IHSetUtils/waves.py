@@ -12,7 +12,7 @@ def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, breakType):
     # T1:        wave period.
     # DIR1:      wave direction. Nautical convention.
     # h1:        depth of wave conditions.
-    # bathy_angle:   bathymetry angle; the normal of the shoreline. Cartesian notation
+    # bathy_angle:   bathymetry angle; the normal of the shoreline. Nautical notation
     # breakType: type of breaking condition. Spectral | monochromatic.
     #
     # OUTPUT:
@@ -125,7 +125,7 @@ def LinearShoal(H1, T1, DIR1, h1, h2, bathy_angle):
     KS = np.sqrt(CG1 / CG2)
     KR = np.sqrt(np.cos(relDir1 * np.pi / 180) / np.cos(relDir2 * np.pi / 180))
     H2 = H1 * KS * KR
-    DIR2 = cartesianDir2nauticalDir(abs_angle_cartesian(relDir2, bathy_angle))
+    DIR2 = cartesianDir2nauticalDir(abs_angle_cartesian(relDir2, nauticalDir2cartesianDir(bathy_angle)))
     
     return H2, DIR2
 
