@@ -75,14 +75,18 @@ def BruunRule(hc, D50, Hberm, slr):
     return r
 
 @jit
-def depthOfClosure(Hs12, Ts12):
-    ###########################################################################    
-    # Closure depth, Birkemeier[1985]
-    # Hs12:     Significant wave height exceed 12 hours in a year.
-    # Ts12:     Significant wave period exceed 12 hours in a year.
-    ###########################################################################
-            
-    dc = 1.75 * Hs12 - 57.9 * (Hs12 ** 2 / (9.81 * Ts12 ** 2))
+def depthOfClosure(Hs12, Ts12, type): 
+    '''
+    Closure depth calculation
+    Hs12:     Significant wave height exceed 12 hours in a year.
+    Ts12:     Significant wave period exceed 12 hours in a year.
+    type:     Birkemeier or Hallermeier
+    '''
+
+    if type == "Birkemeier":
+        dc = 1.75 * Hs12 - 57.9 * (Hs12 ** 2 / (9.81 * Ts12 ** 2))
+    elif type == "Hallermeier":
+        dc = 2.28 * Hs12 - 68.5 * (Hs12 ** 2 / (9.81 * Ts12 ** 2))
         
     return dc
 

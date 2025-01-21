@@ -12,7 +12,7 @@ def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, breakType):
     # T1:        wave period.
     # DIR1:      wave direction. Nautical convention.
     # h1:        depth of wave conditions.
-    # bathy_angle:   bathymetry angle; the normal of the shoreline. Nautical notation
+    # bathy_angle:   bathymetry angle; the normal of the shoreline. Cartesian notation
     # breakType: type of breaking condition. Spectral | monochromatic.
     #
     # OUTPUT:
