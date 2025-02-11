@@ -21,7 +21,7 @@ def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, Bcoef):
     # h2:        depth of breaking
     ###########################################################################
 
-    DIRrel = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), nauticalDir2cartesianDir(bathy_angle))
+    DIRrel = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), bathy_angle)
 
     h2l0 = H1 / Bcoef  # initial condition for breaking depth
 
@@ -183,7 +183,7 @@ def LinearShoal(H1, T1, DIR1, h1, h2, bathy_angle):
     ###########################################################################
 
     
-    relDir1 = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), nauticalDir2cartesianDir(bathy_angle))
+    relDir1 = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), bathy_angle)
 
     L1 = hunt(T1, h1)
     L2 = hunt(T1, h2)
@@ -193,7 +193,7 @@ def LinearShoal(H1, T1, DIR1, h1, h2, bathy_angle):
     KS = np.sqrt(CG1 / CG2)
     KR = np.sqrt(np.cos(relDir1 * np.pi / 180) / np.cos(relDir2 * np.pi / 180))
     H2 = H1 * KS * KR
-    DIR2 = cartesianDir2nauticalDir(abs_angle_cartesian(relDir2, nauticalDir2cartesianDir(bathy_angle)))
+    DIR2 = cartesianDir2nauticalDir(abs_angle_cartesian(relDir2, bathy_angle))
     
     return H2, DIR2
 
