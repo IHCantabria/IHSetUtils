@@ -32,6 +32,8 @@ def ALST(Hb, Dirb, hb, bathy_angle, K):
     # rel_angle_cartesian; rel_dir
     ###########################################################################
 
+    if len(K) == 1:
+        K = np.ones_like(Hb) * K
 
     rel_dir = rel_angle_cartesian(nauticalDir2cartesianDir(Dirb), bathy_angle)
     idx_brk = np.abs(rel_dir) < 90
