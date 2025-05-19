@@ -47,7 +47,7 @@ def ALST(Hb, Dirb, hb, bathy_angle, K):
     rhos = 2650 # sand mass density SPM
     p = 0.4 # porosity SPM
     gammab = Hb[idx_brk] / hb[idx_brk]
-    gammab[np.isnan(gammab)] = np.Inf
+    gammab[np.isnan(gammab)] = np.inf
     cnts = rho * np.sqrt(9.81) / (16. * np.sqrt(gammab) * (rhos - rho) * (1.0 - p))
     q0[idx_brk] = K[idx_brk] * cnts * (Hb[idx_brk] ** (5. / 2.))
     q[idx_brk] = q0[idx_brk] * np.sin(2. * np.deg2rad(rel_dir[idx_brk]))
