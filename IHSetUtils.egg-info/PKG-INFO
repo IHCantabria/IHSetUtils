@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: IHSetUtils
-Version: 2.5.7
+Version: 2.5.8
 Summary: IH-SET Utils
 Home-page: https://github.com/IHCantabria/IHSetUtils
 Author: Lucas de Freitas Pereira
@@ -18,4 +18,3 @@ Requires-Dist: numpy
 Requires-Dist: scipy
 Requires-Dist: xarray
 Requires-Dist: numba
-Requires-Dist: math
