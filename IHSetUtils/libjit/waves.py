@@ -2,93 +2,137 @@ import numpy as np
 from numba import njit
 import math
 
-# Dependencias de trig/extremos deben importarse de 
+# Dependencias de trig/extremos devem importarse de 
 from .geometry import (
     rel_angle_cartesian,
-    nauticalDir2cartesianDir,
-    cartesianDir2nauticalDir,
-    abs_angle_cartesian,
-    rel_angle_cartesianL,
-    nauticalDir2cartesianDirL,
-    cartesianDir2nauticalDirL,
     abs_angle_cartesianL
 )
 
-@njit(nopython=True, fastmath=True, cache=True)
-def find_root_rootsecant_scalar(H1, T1, DIR1, h1, bathy_angle, Bcoef):
-    # Faster scalar root with secant method
-    # Initial bracket from bisection endpoints
-
-    x0 = 0.01
-    x1 = H1 / Bcoef
-    f0 = LinearShoalBreak_Residual(x0, H1, T1, DIR1, h1, bathy_angle, Bcoef)[0]
-    f1 = LinearShoalBreak_Residual(x1, H1, T1, DIR1, h1, bathy_angle, Bcoef)[0]
-    tol = 1e-4
-    for _ in range(1000):  # up to 20 iterations
-        denom = f1 - f0
-        if denom == 0.0:
+@njit(fastmath=True, cache=True)
+def find_root_brent(H1, T1, DIRrel, h1, bathy_angle, Bcoef):
+    # bracket inicial
+    a = 0.01
+    b = h1
+    fa = LinearShoalBreak_Residual(a, H1, T1, DIRrel, h1, bathy_angle, Bcoef)
+    fb = LinearShoalBreak_Residual(b, H1, T1, DIRrel, h1, bathy_angle, Bcoef)
+    if fa * fb > 0:
+        return a, *LinearShoalBreak_ResidualVOL(a, H1, T1, DIRrel, h1, bathy_angle, Bcoef)
+    c, fc = a, fa
+    for _ in range(20):
+        # use inversão quadrática se possível
+        if fa != fc and fb != fc:
+            # interp. quadrática inversa
+            s = ( a*fb*fc / ((fa-fb)*(fa-fc))
+                + b*fa*fc / ((fb-fa)*(fb-fc))
+                + c*fa*fb / ((fc-fa)*(fc-fb)) )
+        else:
+            # secante
+            s = b - fb*(b-a)/(fb-fa)
+        # verifica se s está no bracket e suficientemente longe das extremidades
+        if not ((3*a + b)/4 < s < b) or abs(s-b) >= abs(b-c)/2:
+            s = 0.5*(a+b)  # bisseção
+        fs = LinearShoalBreak_Residual(s, H1, T1, DIRrel, h1, bathy_angle, Bcoef)
+        c, fc = b, fb
+        if fa*fs < 0:
+            b, fb = s, fs
+        else:
+            a, fa = s, fs
+        # troca a/b para que |f(a)| < |f(b)|
+        if abs(fa) < abs(fb):
+            a, b = b, a
+            fa, fb = fb, fa
+        if abs(b - a) < 1e-3:
             break
-        x2 = x1 - f1 * (x1 - x0) / denom
-        f2 = LinearShoalBreak_Residual(x2, H1, T1, DIR1, h1, bathy_angle, Bcoef)[0]
-        if abs(x2 - x1) < tol:
-            return LinearShoalBreak_Residual(x2, H1, T1, DIR1, h1, bathy_angle, Bcoef)
-        # shift
-        x0, f0 = x1, f1
-        x1, f1 = x2, f2
-    return LinearShoalBreak_Residual(x1, H1, T1, DIR1, h1, bathy_angle, Bcoef)
+    root = b
+    H2l, DIR2l = LinearShoalBreak_ResidualVOL(root, H1, T1, DIRrel, h1, bathy_angle, Bcoef)
+    return root, H2l, DIR2l
+
+@njit(fastmath=True, cache=True)
+def find_root_limited_bisection(H1, T1, DIR1, h1, bathy_angle, Bcoef):
+    """
+    Find the root of the residual in [0, h1] by bisection, never exceeding h1.
+    """
+    # initialize bracket
+    left = 0.01
+    right = h1
+    # evaluate residual at endpoints
+    f_left = LinearShoalBreak_Residual(left, H1, T1, DIR1, h1, bathy_angle, Bcoef)
+    f_right = LinearShoalBreak_Residual(right, H1, T1, DIR1, h1, bathy_angle, Bcoef)
+    # if no sign change, fallback
+    if f_left * f_right > 0.0:
+        root = left
+    else:
+        tol = 1e-4
+        for _ in range(50):
+            mid = 0.5 * (left + right)
+            f_mid = LinearShoalBreak_Residual(mid, H1, T1, DIR1, h1, bathy_angle, Bcoef)
+            if abs(f_mid) < tol or (right - left) * 0.5 < tol:
+                root = mid
+                break
+            # choose subinterval with sign change
+            if f_left * f_mid <= 0.0:
+                right = mid
+                f_right = f_mid
+            else:
+                left = mid
+                f_left = f_mid
+        root = 0.5 * (left + right)
+    # compute final wave height and direction
+    H2l, DIR2l = LinearShoalBreak_ResidualVOL(root, H1, T1, DIR1, h1, bathy_angle, Bcoef)
+    return root, H2l, DIR2l
 
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, Bcoef):
     n = H1.shape[0]
     H2   = np.empty(n)
     DIR2 = np.empty(n)
     h2   = np.empty(n)
     invB = 1.0 / Bcoef
-    # convierte vectores
-    DIRcart = nauticalDir2cartesianDir(DIR1)
-    DIRrel  = rel_angle_cartesian(DIRcart, bathy_angle)
+    # precompute directions
+    DIRrel  = rel_angle_cartesian(DIR1, bathy_angle)
     h2l0    = H1 * invB
-    # casos triviales
+    # trivial cases
     for i in range(n):
         cond = (h2l0[i] >= h1[i]) or (H1[i] <= 0.1)
         H2[i]   = cond * H1[i]
         DIR2[i] = cond * DIR1[i]
         h2[i]   = cond * h2l0[i]
-    # ruptura real
+    # real breaking
     for i in range(n):
         if (abs(DIRrel[i]) <= 90.0) and (h2l0[i] < h1[i]) and (H1[i] > 0.1):
-            _, H2[i], DIR2[i], h2[i]  = find_root_rootsecant_scalar(
-                H1[i], T1[i], DIR1[i], h1[i], bathy_angle[i], Bcoef
+            root, H2l, DIR2l = find_root_brent(
+                H1[i], T1[i], DIRrel[i], h1[i], bathy_angle[i], Bcoef
             )
+            H2[i]   = H2l
+            DIR2[i] = DIR2l
+            h2[i]   = root
     return H2, DIR2, h2
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def GroupCelerity(L, T, h):
     c = L / T
     k = 2.0 * math.pi / L
     N = 1.0 + 2.0 * k * h / math.sinh(2.0 * k * h)
     return 0.5 * c * N
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def hunt(T, d):
-    if T <= 0 or d <= 0:
-        return 1e-6  # Avoid division by zero or negative values
     g = 9.81
     G = (2.0 * math.pi / T) ** 2 * (d / g)
     F = G + 1.0 / (1.0 + 0.6522*G + 0.4622*G*G + 0.0864*G**4 + 0.0675*G**5)
     return T * math.sqrt(g * d / F)
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def Snell_Law(L1, L2, alpha1):
     return math.degrees(math.asin(L2 * math.sin(math.radians(alpha1)) / L1))
 
-@njit(nopython=True, fastmath=True, cache=True)
-def LinearShoal(H1, T1, DIR1, h1, h2, bathy_angle):
-
-    rel1 = rel_angle_cartesianL(
-            nauticalDir2cartesianDirL(DIR1), bathy_angle
-            )
+@njit(fastmath=True, cache=True)
+def LinearShoal(H1, T1, rel1, h1, h2, bathy_angle):
+    
+    # rel1 = rel_angle_cartesianL(
+    #     nauticalDir2cartesianDirL(DIR1), bathy_angle
+    # )
     L1 = hunt(T1, h1)
     L2 = hunt(T1, h2)
     CG1 = GroupCelerity(L1, T1, h1)
@@ -97,26 +141,25 @@ def LinearShoal(H1, T1, DIR1, h1, h2, bathy_angle):
     KS = math.sqrt(CG1 / CG2)
     KR = math.sqrt(math.cos(math.radians(rel1)) / math.cos(math.radians(rel2)))
     H2 = H1 * KS * KR
-    DIR2 = cartesianDir2nauticalDirL(
-        abs_angle_cartesianL(rel2, bathy_angle)
-    )
+    DIR2 = abs_angle_cartesianL(rel2, bathy_angle)
+
     return H2, DIR2
 
-@njit(nopython=True, fastmath=True, cache=True)
-def LinearShoalBreak_Residual(h2l, H1, T1, DIR1, h1, bathy_angle, Bcoef):
-    H2l, Dirl = LinearShoal(
+@njit(fastmath=True, cache=True)
+def LinearShoalBreak_Residual(h2l, H1, T1, rel1, h1, bathy_angle, Bcoef):
+    H2l, _ = LinearShoal(
+        H1, T1, rel1, h1, h2l, bathy_angle
+    )
+    return H2l - h2l * Bcoef
+
+@njit(fastmath=True, cache=True)
+def LinearShoalBreak_ResidualVOL(h2l, H1, T1, DIR1, h1, bathy_angle, Bcoef):
+    H2l_arr, DIR2l_arr = LinearShoal(
         H1, T1, DIR1, h1, h2l, bathy_angle
     )
-    return H2l - h2l * Bcoef, Dirl, H2l, h2l
+    return H2l_arr, DIR2l_arr
 
-# @njit(nopython=True, fastmath=True, cache=True)
-# def LinearShoalBreak_ResidualVOL(h2l, H1, T1, DIR1, h1, bathy_angle, Bcoef):
-#     H2l_arr, DIR2l_arr = LinearShoal(
-#         H1, T1, DIR1, h1, h2l, bathy_angle
-#     )
-#     return H2l_arr, DIR2l_arr
-
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def RelDisp(h, T):
     g = 9.81
     Li = hunt(T, h)
@@ -128,7 +171,7 @@ def RelDisp(h, T):
     C = g * T / (2.0 * math.pi) * math.tanh(2.0 * math.pi * h / L)
     return L, C
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def RU2_Stockdon2006(slope, hs0, tp):
     g = 9.81
     L0 = g * tp * tp / (2.0 * math.pi)
@@ -136,6 +179,7 @@ def RU2_Stockdon2006(slope, hs0, tp):
     setup = 0.35 * s * math.sqrt(hs0 * L0)
     infgr =  math.sqrt(hs0 * L0 * (0.563 * s * s + 0.004)) / 2.0
     return 1.1 * (setup + infgr)
+
 
 # import numpy as np
 # from numba import jit
@@ -216,7 +260,7 @@ def RU2_Stockdon2006(slope, hs0, tp):
 
 #     raise RuntimeError("Failed to converge. Try increasing the maximum number of iterations.")
 
-# # @njit(nopython=True, fastmath=True, cache=True)
+# # @njit(fastmath=True, cache=True)
 # @jit
 # def find_root_rootsecant_scalar(H1, T1, DIR1, h1, bathy_angle, Bcoef):
 #     # Faster scalar root with secant method

@@ -4,7 +4,6 @@ import math
 
 # Dependencias de wave_utils
 from .geometry import (
-    nauticalDir2cartesianDirP,
     rel_angle_cartesianP
 )
 
@@ -98,8 +97,8 @@ def ALST(Hb, Dirb, hb, bathy_angle, K):
         d = hb[i]
         if H > 0.0 and d > 0.0:
             # convert direction & relative angle
-            cd = nauticalDir2cartesianDirP(Dirb[i])
-            rel = rel_angle_cartesianP(cd, bathy_angle[i])
+            # cd = nauticalDir2cartesianDirP(Dirb[i])
+            rel = rel_angle_cartesianP(Dirb[i], bathy_angle[i])
             abs_rel = rel if rel >= 0.0 else -rel
             if abs_rel < 90.0:
                 # compute gamma and its sqrt once
