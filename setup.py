@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='IHSetUtils',
-    version='2.5.8',
+    version='2.5.9',
     packages=find_packages(),
     include_package_data=True,
     install_requires=[

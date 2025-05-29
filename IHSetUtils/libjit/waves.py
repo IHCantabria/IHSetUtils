@@ -18,23 +18,24 @@ from .geometry import (
 def find_root_rootsecant_scalar(H1, T1, DIR1, h1, bathy_angle, Bcoef):
     # Faster scalar root with secant method
     # Initial bracket from bisection endpoints
+
     x0 = 0.01
     x1 = H1 / Bcoef
-    f0 = LinearShoalBreak_Residual(x0, H1, T1, DIR1, h1, bathy_angle, Bcoef)
-    f1 = LinearShoalBreak_Residual(x1, H1, T1, DIR1, h1, bathy_angle, Bcoef)
+    f0 = LinearShoalBreak_Residual(x0, H1, T1, DIR1, h1, bathy_angle, Bcoef)[0]
+    f1 = LinearShoalBreak_Residual(x1, H1, T1, DIR1, h1, bathy_angle, Bcoef)[0]
     tol = 1e-4
     for _ in range(1000):  # up to 20 iterations
         denom = f1 - f0
         if denom == 0.0:
             break
         x2 = x1 - f1 * (x1 - x0) / denom
-        f2 = LinearShoalBreak_Residual(x2, H1, T1, DIR1, h1, bathy_angle, Bcoef)
+        f2 = LinearShoalBreak_Residual(x2, H1, T1, DIR1, h1, bathy_angle, Bcoef)[0]
         if abs(x2 - x1) < tol:
-            return x2
+            return LinearShoalBreak_Residual(x2, H1, T1, DIR1, h1, bathy_angle, Bcoef)
         # shift
         x0, f0 = x1, f1
         x1, f1 = x2, f2
-    return x1
+    return LinearShoalBreak_Residual(x1, H1, T1, DIR1, h1, bathy_angle, Bcoef)
 
 
 @njit(nopython=True, fastmath=True, cache=True)
@@ -57,13 +58,9 @@ def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, Bcoef):
     # ruptura real
     for i in range(n):
         if (abs(DIRrel[i]) <= 90.0) and (h2l0[i] < h1[i]) and (H1[i] > 0.1):
-            hl = find_root_rootsecant_scalar(
+            _, H2[i], DIR2[i], h2[i]  = find_root_rootsecant_scalar(
                 H1[i], T1[i], DIR1[i], h1[i], bathy_angle[i], Bcoef
             )
-            H2l, DIR2l = LinearShoalBreak_ResidualVOL(
-                hl, H1[i], T1[i], DIR1[i], h1[i], bathy_angle[i], Bcoef
-            )
-            H2[i], DIR2[i], h2[i] = H2l, DIR2l, hl
     return H2, DIR2, h2
 
 @njit(nopython=True, fastmath=True, cache=True)
@@ -75,6 +72,8 @@ def GroupCelerity(L, T, h):
 
 @njit(nopython=True, fastmath=True, cache=True)
 def hunt(T, d):
+    if T <= 0 or d <= 0:
+        return 1e-6  # Avoid division by zero or negative values
     g = 9.81
     G = (2.0 * math.pi / T) ** 2 * (d / g)
     F = G + 1.0 / (1.0 + 0.6522*G + 0.4622*G*G + 0.0864*G**4 + 0.0675*G**5)
@@ -86,6 +85,7 @@ def Snell_Law(L1, L2, alpha1):
 
 @njit(nopython=True, fastmath=True, cache=True)
 def LinearShoal(H1, T1, DIR1, h1, h2, bathy_angle):
+
     rel1 = rel_angle_cartesianL(
             nauticalDir2cartesianDirL(DIR1), bathy_angle
             )
@@ -104,17 +104,17 @@ def LinearShoal(H1, T1, DIR1, h1, h2, bathy_angle):
 
 @njit(nopython=True, fastmath=True, cache=True)
 def LinearShoalBreak_Residual(h2l, H1, T1, DIR1, h1, bathy_angle, Bcoef):
-    H2l, _ = LinearShoal(
+    H2l, Dirl = LinearShoal(
         H1, T1, DIR1, h1, h2l, bathy_angle
     )
-    return H2l - h2l * Bcoef
+    return H2l - h2l * Bcoef, Dirl, H2l, h2l
 
-@njit(nopython=True, fastmath=True, cache=True)
-def LinearShoalBreak_ResidualVOL(h2l, H1, T1, DIR1, h1, bathy_angle, Bcoef):
-    H2l_arr, DIR2l_arr = LinearShoal(
-        H1, T1, DIR1, h1, h2l, bathy_angle
-    )
-    return H2l_arr, DIR2l_arr
+# @njit(nopython=True, fastmath=True, cache=True)
+# def LinearShoalBreak_ResidualVOL(h2l, H1, T1, DIR1, h1, bathy_angle, Bcoef):
+#     H2l_arr, DIR2l_arr = LinearShoal(
+#         H1, T1, DIR1, h1, h2l, bathy_angle
+#     )
+#     return H2l_arr, DIR2l_arr
 
 @njit(nopython=True, fastmath=True, cache=True)
 def RelDisp(h, T):
