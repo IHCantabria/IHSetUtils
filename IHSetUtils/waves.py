@@ -21,10 +21,10 @@ def BreakingPropagation(H1, T1, DIR1, h1, bathy_angle, breakType):
     # h2:        depth of breaking
     ###########################################################################
 
-    if breakType == "mono":
-        Bcoef = 0.78
-    elif breakType == "spectral":
+    if breakType == 'Spectral':
         Bcoef = 0.45
+    elif breakType == 'Monochromatic':
+        Bcoef = 0.78
 
     DIRrel = rel_angle_cartesian(nauticalDir2cartesianDir(DIR1), bathy_angle)
 
