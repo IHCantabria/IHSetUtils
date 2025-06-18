@@ -329,7 +329,7 @@ def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
     return q, q0
 
 @njit(fastmath=True, cache=True)
-def Van_Rijn_ALST(Hb, Dirb, hb, bathy_angle, K, mb, D50):
+def VanRijn_ALST(Hb, Dirb, hb, bathy_angle, K, mb, D50):
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
