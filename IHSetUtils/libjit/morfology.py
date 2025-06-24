@@ -285,15 +285,15 @@ def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
     q0 = np.zeros(n, dtype=np.float64)
-
+ 
     # Determine K array only once
     use_scalar_K = (K.shape[0] == 1)
     K0 = K[0] if use_scalar_K else 0.0
-
+ 
     sin = math.sin
     radians = math.radians
     abs = math.fabs
-
+ 
     # Main loop
     powerD50 = D50 ** (-0.25)
     powermb = mb ** (0.75)
@@ -311,7 +311,7 @@ def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
             # cd = nauticalDir2cartesianDirP(Dirb[i])
             rel = rel_angle_cartesianP(Dirb[i], bathy_angle[i])
             abs_rel = rel if rel >= 0.0 else -rel
-            if rel < 90.0:
+            if abs_rel < 90.0:
                 # compute gamma and its sqrt once
                 powerHb = H ** 2
                 powerT = T ** 1.5
@@ -320,13 +320,14 @@ def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
                 if rel >= 0.0:
                     q[i] = q0_i * sin(2* radians(rel)) ** 0.6
                 else:
-                    q[i] = -q0_i * sin(2* radians(abs(rel))) ** 0.6
-
+                    q[i] = -q0_i * sin(2* radians(abs_rel)) ** 0.6
+ 
     # apply boundary conditions
     if n > 1:
         q[0] = q[1]
         q[-1] = q[-2]
     return q, q0
+
 
 @njit(fastmath=True, cache=True)
 def VanRijn_ALST(Hb, Dirb, hb, bathy_angle, K, mb, D50):
