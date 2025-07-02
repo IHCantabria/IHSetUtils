@@ -221,15 +221,24 @@ def CERQ_ALST(Hb, Dirb, hb, bathy_angle, K):
             # convert direction & relative angle
             # cd = nauticalDir2cartesianDirP(Dirb[i])
             rel = rel_angle_cartesianP(Dirb[i], bathy_angle[i])
+            # we have to do if rel >40 -> rel = 40.0
+            # and if rel < -40 -> rel = -40.0
+            # this is to avoid large values of q
+
             abs_rel = rel if rel >= 0.0 else -rel
-            if abs_rel < 90.0:
-                Ki = K0 if use_scalar_K else K[i]
-                sqrt_gd = sqrt(9.81*d)
-                times = cnts * sqrt_gd
-                powerH = H ** 2
-                q0_i = Ki * times * powerH
-                q0[i] = q0_i
-                q[i] = q0[i]*sin(2*radians(rel))
+            if abs_rel > 40.0:
+                if rel > 0.0:
+                    rel = 40.0
+                else:
+                    rel = -40.0
+
+            Ki = K0 if use_scalar_K else K[i]
+            sqrt_gd = sqrt(9.81*d)
+            times = cnts * sqrt_gd
+            powerH = H ** 2
+            q0_i = Ki * times * powerH
+            q0[i] = q0_i
+            q[i] = q0[i]*sin(2*radians(rel))
     # apply boundary conditions
     if n > 1:
         q[0] = q[1]
@@ -264,13 +273,18 @@ def Komar_ALST(Hb, Dirb, hb, bathy_angle, K):
             # cd = nauticalDir2cartesianDirP(Dirb[i])
             rel = rel_angle_cartesianP(Dirb[i], bathy_angle[i])
             abs_rel = rel if rel >= 0.0 else -rel
-            if abs_rel < 90.0:
-                Ki = K0 if use_scalar_K else K[i]
-                # compute q0 and q
-                power = H**2.5
-                q0_i = Ki * cnts * power
-                q0[i] = q0_i
-                q[i] = q0_i * sin(radians(rel)) * cos(radians(rel))
+
+            if abs_rel > 40.0:
+                if rel > 0.0:
+                    rel = 40.0
+                else:
+                    rel = -40.0
+            Ki = K0 if use_scalar_K else K[i]
+            # compute q0 and q
+            power = H**2.5
+            q0_i = Ki * cnts * power
+            q0[i] = q0_i
+            q[i] = q0_i * sin(radians(rel)) * cos(radians(rel))
 
     # apply boundary conditions
     if n > 1:
@@ -311,17 +325,19 @@ def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
             # cd = nauticalDir2cartesianDirP(Dirb[i])
             rel = rel_angle_cartesianP(Dirb[i], bathy_angle[i])
             abs_rel = rel if rel >= 0.0 else -rel
-            if abs_rel < 90.0:
-                # compute gamma and its sqrt once
-                powerHb = H ** 2
-                powerT = T ** 1.5
-                q0_i = cnts * powerHb * powerT * Ki
-                q0[i] = q0_i
-                if rel >= 0.0:
-                    q[i] = q0_i * sin(2* radians(rel)) ** 0.6
-                else:
-                    q[i] = -q0_i * sin(2* radians(abs_rel)) ** 0.6
- 
+            if abs_rel > 40.0:
+                rel = 40.0
+                abs_rel = 40.0                
+            # compute gamma and its sqrt once
+            powerHb = H ** 2
+            powerT = T ** 1.5
+            q0_i = cnts * powerHb * powerT * Ki
+            q0[i] = q0_i
+            if rel >= 0.0:
+                q[i] = q0_i * sin(2* radians(rel)) ** 0.6
+            else:
+                q[i] = -q0_i * sin(2* radians(abs_rel)) ** 0.6
+
     # apply boundary conditions
     if n > 1:
         q[0] = q[1]
@@ -357,12 +373,16 @@ def VanRijn_ALST(Hb, Dirb, hb, bathy_angle, K, mb, D50):
             # convert direction & relative angle
             rel = rel_angle_cartesianP(Dirb[i], bathy_angle[i])
             abs_rel = rel if rel >= 0.0 else -rel
-            if abs_rel < 90.0:
-                # compute q0 and q
-                powerH = H ** 3.1
-                q0_i = Ki * cnts * powerH 
-                q0[i] = q0_i
-                q[i] = q0[i] * sin(2 * radians(rel))
+            if abs_rel > 40.0:
+                if rel > 0.0:
+                    rel = 40.0
+                else:
+                    rel = -40.0
+            # compute q0 and q
+            powerH = H ** 3.1
+            q0_i = Ki * cnts * powerH 
+            q0[i] = q0_i
+            q[i] = q0[i] * sin(2 * radians(rel))
 
     # apply boundary conditions
     if n > 1:
