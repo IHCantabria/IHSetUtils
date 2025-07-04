@@ -197,7 +197,7 @@ def ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50, formula):
 
 
 @njit(fastmath=True, cache=True)
-def CERQ_ALST(Hb, Dirb, hb, bathy_angle, K, mb, diff_Hb): # , fac
+def CERQ_ALST(Hb, Dirb, hb, bathy_angle, K): # , fac
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
@@ -244,7 +244,7 @@ def CERQ_ALST(Hb, Dirb, hb, bathy_angle, K, mb, diff_Hb): # , fac
                 powerH = H ** 2
                 q0_i = Ki * times * powerH
                 q0[i] = q0_i
-                q[i] = q0[i]*(sin(2*radians(rel)) - 2 / mb * cos(2 * radians(rel)) * diff_Hb[i])
+                q[i] = q0[i]*(sin(2*radians(rel)))
 
     # apply boundary conditions
     if n > 1:
@@ -253,7 +253,7 @@ def CERQ_ALST(Hb, Dirb, hb, bathy_angle, K, mb, diff_Hb): # , fac
     return q, q0
 
 @njit(fastmath=True, cache=True)
-def Komar_ALST(Hb, Dirb, hb, bathy_angle, K, mb, diff_Hb):
+def Komar_ALST(Hb, Dirb, hb, bathy_angle, K):
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
@@ -293,7 +293,7 @@ def Komar_ALST(Hb, Dirb, hb, bathy_angle, K, mb, diff_Hb):
                 power = H**2.5
                 q0_i = Ki * cnts * power
                 q0[i] = q0_i
-                q[i] = q0_i * (sin(radians(rel)) * cos(radians(rel)) - 2 / mb * cos(2 * radians(rel)) * diff_Hb[i])
+                q[i] = q0_i * (sin(radians(rel)) * cos(radians(rel)))
 
     # apply boundary conditions
     if n > 1:
@@ -303,7 +303,7 @@ def Komar_ALST(Hb, Dirb, hb, bathy_angle, K, mb, diff_Hb):
 
 
 @njit(fastmath=True, cache=True)
-def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50, diff_Hb):
+def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
@@ -346,9 +346,9 @@ def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50, diff_Hb):
                 q0_i = cnts * powerHb * powerT * Ki
                 q0[i] = q0_i
                 if rel >= 0.0:
-                    q[i] = q0_i * (sin(2* radians(rel)) ** 0.6 - 2 / mb * cos(2 * radians(rel)) * diff_Hb[i])
+                    q[i] = q0_i * (sin(2* radians(rel)) ** 0.6)
                 else:
-                    q[i] = -q0_i * (sin(2* radians(abs_rel)) ** 0.6 - 2 / mb * cos(2 * radians(abs_rel)) * diff_Hb[i])
+                    q[i] = -q0_i * (sin(2* radians(abs_rel)) ** 0.6)
 
     # apply boundary conditions
     if n > 1:
@@ -358,7 +358,7 @@ def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50, diff_Hb):
 
 
 @njit(fastmath=True, cache=True)
-def VanRijn_ALST(Hb, Dirb, hb, bathy_angle, K, mb, D50, diff_Hb):
+def VanRijn_ALST(Hb, Dirb, hb, bathy_angle, K, mb, D50):
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
@@ -397,7 +397,7 @@ def VanRijn_ALST(Hb, Dirb, hb, bathy_angle, K, mb, D50, diff_Hb):
                 powerH = H ** 3.1
                 q0_i = Ki * cnts * powerH 
                 q0[i] = q0_i
-                q[i] = q0[i] * (sin(2 * radians(rel)) - 2 / mb * cos(2 * radians(rel)) * diff_Hb[i])
+                q[i] = q0[i] * (sin(2 * radians(rel)))
 
     # apply boundary conditions
     if n > 1:
