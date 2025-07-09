@@ -4,7 +4,8 @@ import math
 
 # Dependencias de wave_utils
 from .geometry import (
-    rel_angle_cartesianP
+    rel_angle_cartesianP,
+    nauticalDir2cartesianDirL
 )
 
 @njit(nopython=True, fastmath=True, cache=True)
@@ -112,7 +113,7 @@ def ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50, formula):
                     Ki = K0 if use_scalar_K else K[i]
                     sqrt_gd = sqrt(9.81*d)
                     times = cnts * sqrt_gd
-                    powerH = H ** 2
+                    powerH = H ** 2.5
                     q0_i = Ki * times * powerH
                     q0[i] = q0_i
                     q[i] = q0[i]*sin(2*radians(rel))
@@ -214,42 +215,32 @@ def CERQ_ALST(Hb, Dirb, hb, bathy_angle, K): # , fac
 
     rho = 1025.0
     rhos_rho = 2650.0 - rho
-    lbda = 0.4
-    cnts = rho / (16.0 * lbda * (rhos_rho))
+    sq_g = sqrt(9.81)
+    p = 0.4
     for i in range(n):
         H = Hb[i]
         d = hb[i]
+        
         if H > 0.0 and d > 0.0:
-            # convert direction & relative angle
-            # cd = nauticalDir2cartesianDirP(Dirb[i])
             rel = rel_angle_cartesianP(Dirb[i], bathy_angle[i])
-            # rel = rel / fac[i]  # Adjust relative angle by factor
-            # we have to do if rel >40 -> rel = 40.0
-            # and if rel < -40 -> rel = -40.0
-            # this is to avoid large values of q
-
             abs_rel = rel if rel >= 0.0 else -rel
-            
             if abs_rel <= 90.0:
 
-                if abs_rel > 40.0:
+                if abs_rel > 42.5:
                     if rel > 0.0:
-                        rel = 40.0
+                        rel = 42.5
                     else:
-                        rel = -40.0
+                        rel = -42.5
 
                 Ki = K0 if use_scalar_K else K[i]
-                sqrt_gd = sqrt(9.81*d)
-                times = cnts * sqrt_gd
-                powerH = H ** 2
+                sq_gammab = sqrt(H/d)
+                times = (rho * sq_g)/ (16.0 * sq_gammab * (1-p) * (rhos_rho))
+                powerH = H ** 2.5
                 q0_i = Ki * times * powerH
                 q0[i] = q0_i
                 q[i] = q0[i]*(sin(2*radians(rel)))
 
-    # apply boundary conditions
-    if n > 1:
-        q[0] = q[1]
-        q[-1] = q[-2]
+
     return q, q0
 
 @njit(fastmath=True, cache=True)
@@ -283,11 +274,11 @@ def Komar_ALST(Hb, Dirb, hb, bathy_angle, K):
 
             if abs_rel <= 90.0:
 
-                if abs_rel > 40.0:
+                if abs_rel > 42.5:
                     if rel > 0.0:
-                        rel = 40.0
+                        rel = 42.5
                     else:
-                        rel = -40.0
+                        rel = -42.5
                 Ki = K0 if use_scalar_K else K[i]
                 # compute q0 and q
                 power = H**2.5
@@ -295,10 +286,6 @@ def Komar_ALST(Hb, Dirb, hb, bathy_angle, K):
                 q0[i] = q0_i
                 q[i] = q0_i * (sin(radians(rel)) * cos(radians(rel)))
 
-    # apply boundary conditions
-    if n > 1:
-        q[0] = q[1]
-        q[-1] = q[-2]
     return q, q0
 
 
@@ -337,9 +324,9 @@ def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
 
             if abs_rel <= 90.0:
                     
-                if abs_rel > 40.0:
-                    rel = 40.0
-                    abs_rel = 40.0                
+                if abs_rel > 42.5:
+                    rel = 42.5
+                    abs_rel = 42.5                
                 # compute gamma and its sqrt once
                 powerHb = H ** 2
                 powerT = T ** 1.5
@@ -350,10 +337,7 @@ def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
                 else:
                     q[i] = -q0_i * (sin(2* radians(abs_rel)) ** 0.6)
 
-    # apply boundary conditions
-    if n > 1:
-        q[0] = q[1]
-        q[-1] = q[-2]
+
     return q, q0
 
 
@@ -388,19 +372,15 @@ def VanRijn_ALST(Hb, Dirb, hb, bathy_angle, K, mb, D50):
             abs_rel = rel if rel >= 0.0 else -rel
             if abs_rel <= 90.0:
 
-                if abs_rel > 40.0:
+                if abs_rel > 42.5:
                     if rel > 0.0:
-                        rel = 40.0
+                        rel = 42.5
                     else:
-                        rel = -40.0
+                        rel = -42.5
                 # compute q0 and q
                 powerH = H ** 3.1
                 q0_i = Ki * cnts * powerH 
                 q0[i] = q0_i
                 q[i] = q0[i] * (sin(2 * radians(rel)))
 
-    # apply boundary conditions
-    if n > 1:
-        q[0] = q[1]
-        q[-1] = q[-2]
     return q, q0
