@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit
 import math
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def abs_angle_cartesian(relD, batiD):
     n = relD.shape[0]
     waveD = np.empty(n)
@@ -15,7 +15,7 @@ def abs_angle_cartesian(relD, batiD):
         waveD[i] = wd
     return waveD
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def abs_pos(X0, Y0, phi, dn):
     n = dn.shape[0]
     XN = np.empty(n)
@@ -27,7 +27,7 @@ def abs_pos(X0, Y0, phi, dn):
         YN[i] = Y0[i] + dn[i] * s
     return XN, YN
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def cartesianDir2nauticalDir(cDir):
     n = cDir.shape[0]
     nDir = np.empty(n)
@@ -38,7 +38,7 @@ def cartesianDir2nauticalDir(cDir):
         nDir[i] = nd
     return nDir
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def nauticalDir2cartesianDir(nDir):
     n = nDir.shape[0]
     cDir = np.empty(n)
@@ -49,14 +49,14 @@ def nauticalDir2cartesianDir(nDir):
         cDir[i] = cd
     return cDir
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def nauticalDir2cartesianDirP(nDir):
     cd = 90.0 - nDir
     if cd < -180.0:
         cd += 360.0
     return cd
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def pol2cart(rho, phi):
     n = rho.shape[0]
     x = np.empty(n)
@@ -66,7 +66,7 @@ def pol2cart(rho, phi):
         y[i] = rho[i] * math.sin(phi[i])
     return x, y
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def rel_angle_cartesian(waveD, batiD):
     n = waveD.shape[0]
     relD = np.empty(n)
@@ -79,7 +79,7 @@ def rel_angle_cartesian(waveD, batiD):
         relD[i] = rd
     return relD
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def rel_angle_cartesianP(waveD, batiD):
     rd = waveD - batiD
     if rd > 180.0:
@@ -88,7 +88,7 @@ def rel_angle_cartesianP(waveD, batiD):
         rd += 360.0
     return rd
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def shore_angle(XN, YN, wave_angle):
     n = XN.shape[0] - 1
     shoreAng = np.empty(n)
@@ -111,14 +111,14 @@ def shore_angle(XN, YN, wave_angle):
             shoreAng[i] = alfa
     return shoreAng
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def nauticalDir2cartesianDirL(nDir):
     cd = 90.0 - nDir
     if cd < -180.0:
         cd += 360.0
     return cd
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def rel_angle_cartesianL(waveD, batiD):
     rd = waveD - batiD
     if rd >= 180.0:
@@ -127,7 +127,7 @@ def rel_angle_cartesianL(waveD, batiD):
         rd += 360.0
     return rd
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def abs_angle_cartesianL(relD, batiD):
     wd = relD + batiD
     if wd > 180.0:
@@ -136,7 +136,7 @@ def abs_angle_cartesianL(relD, batiD):
         wd += 360.0
     return wd
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def cartesianDir2nauticalDirL(cDir):
     nd = 90.0 - cDir
     if nd < 0.0:

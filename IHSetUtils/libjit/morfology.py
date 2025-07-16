@@ -8,7 +8,7 @@ from .geometry import (
     nauticalDir2cartesianDirL
 )
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def wMOORE(D50):
     # Fall velocity; D50 in meters. Moore 1982
     if D50 <= 0.1e-3:
@@ -18,36 +18,51 @@ def wMOORE(D50):
     else:
         return 4.36 * math.sqrt(D50)
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def ADEAN(D50):
     # Dean parameter; D50 in meters
     return 0.51 * wMOORE(D50) ** 0.44
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def A_Dean_Dalrymple(D50):
     # Dean parameter; D50 in meters
     return 2.25 * (wMOORE(D50)**2/9.81) ** (1/3)
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def wast(hb, D50):
     # Width of the active surf zone
     # hb and D50 scalars
     return (hb / ADEAN(D50)) ** 1.5
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def deanSlope(depth, D50):
     # Slope for a Dean profile; D50 and depth in meters
     A = ADEAN(D50)
     x = wast(depth, D50)
     return 2.0 * A / (3.0 * x ** (1.0/3.0))
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def BruunRule(hc, D50, Hberm, slr):
     # Expected progradation/recession
     Wc = wast(hc, D50)
     return slr * Wc / (Hberm + hc)
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
+def BruunRule2(c, tanB, dSdt):
+    """
+    Bruun Rule
+    c: Bruun parameter
+    tanB: Slope of the beach
+    dSdt: Sea level rise rate
+    Returns:
+        r: Expected progradation/recession [m]
+    """
+
+    r = -c * dSdt / tanB
+
+    return r
+
+@njit(fastmath=True, cache=True)
 def depthOfClosure(Hs12, Ts12, typeflag):
     # typeflag: 0 -> Birkemeier, 1 -> Hallermeier
     if typeflag == 0:
@@ -55,7 +70,7 @@ def depthOfClosure(Hs12, Ts12, typeflag):
     else:
         return 2.28 * Hs12 - 68.5 * (Hs12 * Hs12 / (9.81 * Ts12 * Ts12))
 
-@njit(nopython=True, fastmath=True, cache=True)
+@njit(fastmath=True, cache=True)
 def Hs12Calc(Hs, Tp):
     # Significant wave height exceed 12 hours a year
     n = Hs.shape[0]
@@ -198,7 +213,7 @@ def ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50, formula):
 
 
 @njit(fastmath=True, cache=True)
-def CERQ_ALST(Hb, Dirb, hb, bathy_angle, K): # , fac
+def CERC_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50): # , fac
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
@@ -244,7 +259,7 @@ def CERQ_ALST(Hb, Dirb, hb, bathy_angle, K): # , fac
     return q, q0
 
 @njit(fastmath=True, cache=True)
-def Komar_ALST(Hb, Dirb, hb, bathy_angle, K):
+def Komar_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
@@ -342,7 +357,7 @@ def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
 
 
 @njit(fastmath=True, cache=True)
-def VanRijn_ALST(Hb, Dirb, hb, bathy_angle, K, mb, D50):
+def VanRijn_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
