@@ -1,6 +1,7 @@
 LICENSE
 README.md
 setup.py
+IHSetUtils/CoastlineModel.py
 IHSetUtils/__init__.py
 IHSetUtils/conversion_IHData.py
 IHSetUtils/geometry.py
