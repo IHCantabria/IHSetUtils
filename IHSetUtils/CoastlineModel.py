@@ -13,10 +13,11 @@ class CoastlineModel(ABC):
     Abstract base class for coastline models.
     """
 
-    def __init__(self, path: str,
+    def __init__(self, 
+                 path: str,
                  model_name: str, 
                  mode: str, 
-                 type: str, 
+                 model_type: str, 
                  model_key: str):
         """
         Initialize the CoastlineModel with a path to the model data.
@@ -29,14 +30,12 @@ class CoastlineModel(ABC):
         
         self.name = model_name
         self.mode = mode
-        self.type = type
+        self.type = model_type
 
         
         self._set_type()
         self._setup_mode()
-        
-
-        self._split_data()
+        self._compute_time_step()
 
     def _set_type(self):
         """
@@ -44,32 +43,58 @@ class CoastlineModel(ABC):
         """
         if self.type == 'CS':
             self._setup_crossshore_vars()
-            self._split_data()
-            self._compute_time_step()
         elif self.type == 'RT':
             self._setup_rotation_vars()
-            self._split_data()
-            self._compute_time_step()
+            
         # else self.type == 'OL':
         #     self._setup_oneline_vars()
         # else:
         #     raise ValueError(f"Unknown type: {self.type}")
-
-    def _split_data(self):
+    def _setup_mode(self):
+        """
+        Set up the model based on the specified mode.
+        """
+        if self.mode == 'calibration':
+            self.cal_alg = self.cfg['cal_alg']
+            self.metrics = self.cfg['metrics']
+            self.lb = self.cfg['lb']
+            self.ub = self.cfg['ub']
+            self.calibr_cfg = fo.config_cal(self.cfg)
+            self._split_data_c()
+        elif self.mode == 'standalone':
+            self._split_data_dr()
+            
+    def _split_data_c(self):
         """
         Split the dataset into training and validation sets based on the time range.
         """
         ii = np.where(self.time>=self.start_date)[0][0]
+        self.time = self.time[ii:]
         jj = np.where((self.time >= self.start_date) & (self.time <= self.end_date))[0]
+        self.time_s = self.time[jj]
         kk = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))[0]
 
         self.idx_validation     = np.where((self.time < self.start_date) | (self.time > self.end_date))[0]
         self.idx_calibration    = jj
         self.idx_validation_obs = np.where((self.time_obs < self.start_date) | (self.time_obs > self.end_date))[0]
         
-        self._setup_calval_vars(ii, jj, kk)
+        self._split_cal_vars(ii, jj, kk)
 
-    def _setup_calval_vars(self, ii, jj, kk):
+    def _split_data_dr(self):
+        """
+        Split the dataset into training and validation sets based on the time range.
+        """
+        ii = np.where((self.time >= self.start_date) & (self.time <= self.end_date))[0]
+        self.time = self.time[ii]
+        self.hs   = self.hs[ii]
+        self.tp   = self.tp[ii]
+        self.dir  = self.dir[ii]
+        jj = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))[0]
+        self.time_s = self.time[jj]
+        self.Obs = self.Obs[ii]
+        self.time_obs = self.time_obs[ii]
+
+    def _split_cal_vars(self, ii, jj, kk):
         """
         Set up variables for calibration and validation based on the indices.
         
@@ -78,18 +103,17 @@ class CoastlineModel(ABC):
         :param kk: Indices for the observation period.
         :param mm: Indices for the validation observations.
         """
-        self.time = self.time[ii:]
-        self.hs   = self.data.hs.values[ii:]
-        self.tp   = self.data.tp.values[ii:]
-        self.dir  = self.data.dir.values[ii:]
+        
+        self.hs   = self.hs[ii:]
+        self.tp   = self.tp[ii:]
+        self.dir  = self.dir[ii:]
 
-        self.time_s = self.time[jj]
         self.hs_s   = self.hs[jj]
         self.tp_s   = self.tp[jj]
         self.dir_s  = self.dir[jj]
 
-        self.Obs_s  = self.data.obs.values[kk]
-        self.time_obs_s = self.time_obs[kk]
+        self.Obs_splited  = self.Obs[kk]
+        self.time_obs_s   = self.time_obs[kk]
 
         mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time_s - t)))
         self.idx_obs_splited = mkIdx(self.time_obs_s)
@@ -105,23 +129,6 @@ class CoastlineModel(ABC):
             self.idx_validation_for_obs = []
         
 
-    @abstractmethod
-    def calibrate(self):
-        """
-        Abstract method to calibrate the model with the provided data.
-        
-        :param data: The dataset to calibrate the model with.
-        :return: The calibrated dataset.
-        """
-        pass
-
-    @abstractmethod
-    def setup_forcing(self):
-        """
-        Abstract method to set up the forcing for the model.
-        """
-        pass
-
     def _load_data(self, jkey: str):
         """ 
         Load the dataset from the specified path.
@@ -133,6 +140,15 @@ class CoastlineModel(ABC):
         self.end_date = pd.to_datetime(self.cfg['end_date'])
         self.time = pd.to_datetime(self.data.time.values)
         self.time_obs = pd.to_datetime(self.data.time_obs.values)
+        self.hs = self.data.hs.values
+        self.tp = self.data.tp.values
+        self.dir = self.data.dir.values
+        self.Obs = self.data.obs.values
+        self.Obs_avg = self.data.average_obs.values
+        self.mask_nan_obs = self.data.mask_nan_obs.values
+        self.mask_nan_average_obs = self.data.mask_nan_average_obs.values
+        self.depth = self.data.waves_depth.values
+        self.bathy_angle = self.data.phi.values
         self.data.close()
 
     def _setup_crossshore_vars(self):
@@ -140,38 +156,23 @@ class CoastlineModel(ABC):
         Set up cross-shore variables for the model.
         """
         if self.cfg['trs'] == 'Average':
-            self.hs = np.mean(self.data.hs.values, axis=1)
-            self.tp = np.mean(self.data.tp.values, axis=1)
-            self.dir = circmean(self.data.dir.values, axis=1, high=360, low=0)
-            self.Obs = self.data.average_obs.values
-            self.Obs = self.Obs[~self.data.mask_nan_average_obs]
-            self.time_obs = self.time_obs[~self.data.mask_nan_average_obs]
-            self.depth = np.mean(self.data.waves_depth.values)
-            self.bathy_angle = circmean(self.data.phi.values, high=360, low=0)
-        else:
-            self.hs = self.data.hs.values[:, self.cfg['trs']]
-            self.tp = self.data.tp.values[:, self.cfg['trs']]
-            self.dir = self.data.dir.values[:, self.cfg['trs']]
-            self.Obs = self.data.obs.values[:, self.cfg['trs']]
-            self.Obs = self.Obs[~self.data.mask_nan_obs[:, self.cfg['trs']]]
-            self.time_obs = self.time_obs[~self.data.mask_nan_obs[:, self.cfg['trs']]]
-            self.depth = self.data.waves_depth.values[self.cfg['trs']]
-            self.bathy_angle = self.data.phi.values[self.cfg['trs']]
-
-    def _setup_mode(self):
-        """
-        Set up the model based on the specified mode.
-        """
-        if self.mode == 'calibration':
-            self.cal_alg = self.cfg['cal_alg']
-            self.metrics = self.cfg['metrics']
-            self.lb = self.cfg['lb']
-            self.ub = self.cfg['ub']
-
-            self.calibr_cfg = fo.config_cal(self.cfg)
-        else:
-            pass
-
+            self.hs = np.mean(self.hs, axis=1)
+            self.tp = np.mean(self.tp, axis=1)
+            self.dir = circmean(self.dir, axis=1)
+            self.Obs = self.Obs_avg
+            self.Obs = self.Obs[~self.mask_nan_average_obs]
+            self.time_obs = self.time_obs[~self.mask_nan_average_obs]
+            self.depth = np.mean(self.depth)
+            self.bathy_angle = circmean(self.bathy_angle)
+        elif isinstance(self.cfg['trs'], int):
+            self.hs = self.hs[:, self.cfg['trs']]
+            self.tp = self.tp[:, self.cfg['trs']]
+            self.dir = self.dir[:, self.cfg['trs']]
+            self.Obs = self.Obs[:, self.cfg['trs']]
+            self.Obs = self.Obs[~self.mask_nan_obs[:, self.cfg['trs']]]
+            self.time_obs = self.time_obs[~self.mask_nan_obs[:, self.cfg['trs']]]
+            self.depth = self.depth[self.cfg['trs']]
+            self.bathy_angle = self.bathy_angle[self.cfg['trs']]
 
     # def _setup_rotation_vars(self):
 
@@ -189,8 +190,9 @@ class CoastlineModel(ABC):
         # Now we calculate the dt from the time variable
         mkDT = np.vectorize(lambda i: (self.time[i+1] - self.time[i]).total_seconds()/3600)
         self.dt = mkDT(np.arange(0, len(self.time)-1))
-        mkDTsplited = np.vectorize(lambda i: (self.time_s[i+1] - self.time_s[i]).total_seconds()/3600)
-        self.dt_s = mkDTsplited(np.arange(0, len(self.time_s)-1))
+        if self.mode == 'calibration':
+            mkDTsplited = np.vectorize(lambda i: (self.time_s[i+1] - self.time_s[i]).total_seconds()/3600)
+            self.dt_s = mkDTsplited(np.arange(0, len(self.time_s)-1))
 
     def break_waves_snell(self):
         """
@@ -199,5 +201,51 @@ class CoastlineModel(ABC):
         self.break_type = self.cfg['break_type']
         self.hb, self.dirb, self.depthb = BreakingPropagation(self.hs, self.tp, self.dir, np.repeat(self.depth, len(self.hs)), np.repeat(self.bathy_angle, len(self.hs)), self.break_type)
         self.hb_s, self.dirb_s, self.depthb_s = BreakingPropagation(self.hs_s, self.tp_s, self.dir_s, np.repeat(self.depth, len(self.hs_s)), np.repeat(self.bathy_angle, len(self.hs_s)), self.break_type)
+
+
+    @abstractmethod
+    def setup_forcing(self):
+        """Prepare forcing arrays (e.g., E, P, E_s, P_s, Yini)."""
+        pass
+
+    @abstractmethod
+    def init_par(self, population_size: int):
+        """Return (population, lower_bounds, upper_bounds)."""
+        pass
+
+    @abstractmethod
+    def model_sim(self, par: np.ndarray) -> np.ndarray:
+        """Simulate only observation points for calibration."""
+        pass
+
+    @abstractmethod
+    def run_model(self, par: np.ndarray) -> np.ndarray:
+        """Run full model over all timesteps."""
+        pass
+
+    def calibrate(self):
+        """Generic calibration flow using fast_optimization."""
+        sol, objs, hist = self.calibr_cfg.calibrate(self)
+        if getattr(self, 'is_exp', False):
+            sol = np.exp(sol)
+        self.solution, self.objectives, self.hist = sol, objs, hist
+        self.run(self.solution)
+        
+    def run(self, par: np.ndarray) -> np.ndarray:
+        """
+        Run the model with the given parameters.
+        
+        :param par: Parameters for the model.
+        :return: Model output.
+        """
+        self.par_values = par
+        self._set_parameter_names()
+        self.full_run = self.run_model(self.par_values)
+        
+
+    @abstractmethod
+    def _set_parameter_names(self):
+        """Assign self.par_names and self.par_values after calibration."""
+        pass
 
 
