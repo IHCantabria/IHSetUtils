@@ -202,20 +202,9 @@ class CoastlineModel(ABC):
         self.hb, self.dirb, self.depthb = BreakingPropagation(self.hs, self.tp, self.dir, np.repeat(self.depth, len(self.hs)), np.repeat(self.bathy_angle, len(self.hs)), self.break_type)
         self.hb_s, self.dirb_s, self.depthb_s = BreakingPropagation(self.hs_s, self.tp_s, self.dir_s, np.repeat(self.depth, len(self.hs_s)), np.repeat(self.bathy_angle, len(self.hs_s)), self.break_type)
 
-
     @abstractmethod
     def setup_forcing(self):
         """Prepare forcing arrays (e.g., E, P, E_s, P_s, Yini)."""
-        pass
-
-    @abstractmethod
-    def init_par(self, population_size: int):
-        """Return (population, lower_bounds, upper_bounds)."""
-        pass
-
-    @abstractmethod
-    def model_sim(self, par: np.ndarray) -> np.ndarray:
-        """Simulate only observation points for calibration."""
         pass
 
     @abstractmethod
