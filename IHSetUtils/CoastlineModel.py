@@ -90,6 +90,8 @@ class CoastlineModel(ABC):
         self.hs   = self.hs[ii]
         self.tp   = self.tp[ii]
         self.dir  = self.dir[ii]
+        self.tide = self.tide[ii]
+        self.surge = self.surge[ii]
         jj = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))[0]
         self.time_s = self.time[jj]
         self.Obs = self.Obs[jj]
