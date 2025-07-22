@@ -219,7 +219,7 @@ class CoastlineModel(ABC):
         else:
             self.hb = self.hs
             self.dirb = self.dir
-            self.depthb = self.self.hb/0.55
+            self.depthb = self.hb/0.55
             if self.mode == 'calibration':
                 self.hb_s = self.hs_s
                 self.dirb_s = self.dir_s
