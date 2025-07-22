@@ -91,8 +91,8 @@ class CoastlineModel(ABC):
         self.dir  = self.dir[ii]
         jj = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))[0]
         self.time_s = self.time[jj]
-        self.Obs = self.Obs[ii]
-        self.time_obs = self.time_obs[ii]
+        self.Obs = self.Obs[jj]
+        self.time_obs = self.time_obs[jj]
 
     def _split_cal_vars(self, ii, jj, kk):
         """
