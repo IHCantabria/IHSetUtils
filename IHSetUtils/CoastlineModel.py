@@ -34,7 +34,8 @@ class CoastlineModel(ABC):
         self._set_type()
         self._setup_mode()
         self._compute_time_step()
-        if isinstance(self.cfg['switch_brk'], bool):
+        # verify if cfg·['switch_brk'] exists
+        if 'switch_brk' in self.cfg:
             self._break_waves_snell()
 
     def _set_type(self):
