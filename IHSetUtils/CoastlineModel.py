@@ -107,10 +107,14 @@ class CoastlineModel(ABC):
         self.hs   = self.hs[ii:]
         self.tp   = self.tp[ii:]
         self.dir  = self.dir[ii:]
+        self.tide = self.tide[ii:]
+        self.surge = self.surge[ii:]
 
         self.hs_s   = self.hs[jj]
         self.tp_s   = self.tp[jj]
         self.dir_s  = self.dir[jj]
+        self.tide_s = self.tide[jj]
+        self.surge_s = self.surge[jj]
 
         self.Obs_splited  = self.Obs[kk]
         self.time_obs_s   = self.time_obs[kk]
@@ -143,6 +147,8 @@ class CoastlineModel(ABC):
         self.hs = self.data.hs.values
         self.tp = self.data.tp.values
         self.dir = self.data.dir.values
+        self.tide = self.data.tide.values
+        self.surge = self.data.surge.values
         self.Obs = self.data.obs.values
         self.Obs_avg = self.data.average_obs.values
         self.mask_nan_obs = self.data.mask_nan_obs.values
@@ -159,6 +165,8 @@ class CoastlineModel(ABC):
             self.hs = np.mean(self.hs, axis=1)
             self.tp = np.mean(self.tp, axis=1)
             self.dir = circmean(self.dir, axis=1)
+            self.tide = np.mean(self.tide, axis=1)
+            self.surge = np.mean(self.surge, axis=1)
             self.Obs = self.Obs_avg
             self.Obs = self.Obs[~self.mask_nan_average_obs]
             self.time_obs = self.time_obs[~self.mask_nan_average_obs]
@@ -168,6 +176,8 @@ class CoastlineModel(ABC):
             self.hs = self.hs[:, self.cfg['trs']]
             self.tp = self.tp[:, self.cfg['trs']]
             self.dir = self.dir[:, self.cfg['trs']]
+            self.tide = self.tide[:, self.cfg['trs']]
+            self.surge = self.surge[:, self.cfg['trs']]
             self.Obs = self.Obs[:, self.cfg['trs']]
             self.Obs = self.Obs[~self.mask_nan_obs[:, self.cfg['trs']]]
             self.time_obs = self.time_obs[~self.mask_nan_obs[:, self.cfg['trs']]]
