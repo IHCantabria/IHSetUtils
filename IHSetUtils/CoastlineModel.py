@@ -26,16 +26,16 @@ class CoastlineModel(ABC):
         """
         self.path = path
         self._load_data(model_key)
-
         
         self.name = model_name
         self.mode = mode
         self.type = model_type
-
         
         self._set_type()
         self._setup_mode()
         self._compute_time_step()
+        if isinstance(self.cfg['switch_brk'], bool):
+            self._break_waves_snell()
 
     def _set_type(self):
         """
@@ -194,13 +194,23 @@ class CoastlineModel(ABC):
             mkDTsplited = np.vectorize(lambda i: (self.time_s[i+1] - self.time_s[i]).total_seconds()/3600)
             self.dt_s = mkDTsplited(np.arange(0, len(self.time_s)-1))
 
-    def break_waves_snell(self):
+    def _break_waves_snell(self):
         """
         Break waves using Snell's law.
         """
-        self.break_type = self.cfg['break_type']
-        self.hb, self.dirb, self.depthb = BreakingPropagation(self.hs, self.tp, self.dir, np.repeat(self.depth, len(self.hs)), np.repeat(self.bathy_angle, len(self.hs)), self.break_type)
-        self.hb_s, self.dirb_s, self.depthb_s = BreakingPropagation(self.hs_s, self.tp_s, self.dir_s, np.repeat(self.depth, len(self.hs_s)), np.repeat(self.bathy_angle, len(self.hs_s)), self.break_type)
+        if self.cfg['switch_brk']:
+            self.break_type = self.cfg['break_type']
+            self.hb, self.dirb, self.depthb = BreakingPropagation(self.hs, self.tp, self.dir, np.repeat(self.depth, len(self.hs)), np.repeat(self.bathy_angle, len(self.hs)), self.break_type)
+            if self.mode == 'calibration':
+                self.hb_s, self.dirb_s, self.depthb_s = BreakingPropagation(self.hs_s, self.tp_s, self.dir_s, np.repeat(self.depth, len(self.hs_s)), np.repeat(self.bathy_angle, len(self.hs_s)), self.break_type)
+        else:
+            self.hb = self.hs
+            self.dirb = self.dir
+            self.depthb = self.self.hb/0.55
+            if self.mode == 'calibration':
+                self.hb_s = self.hs_s
+                self.dirb_s = self.dir_s
+                self.depthb_s = self.hb_s/0.55
 
     @abstractmethod
     def setup_forcing(self):
