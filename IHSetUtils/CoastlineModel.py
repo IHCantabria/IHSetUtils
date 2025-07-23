@@ -211,7 +211,7 @@ class CoastlineModel(ABC):
         """
         Break waves using Snell's law.
         """
-        if self.cfg['switch_brk']:
+        if self.cfg['switch_brk'] == 1:
             self.break_type = self.cfg['break_type']
             self.hb, self.dirb, self.depthb = BreakingPropagation(self.hs, self.tp, self.dir, np.repeat(self.depth, len(self.hs)), np.repeat(self.bathy_angle, len(self.hs)), self.break_type)
             if self.mode == 'calibration':
