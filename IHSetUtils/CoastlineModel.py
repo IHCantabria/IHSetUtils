@@ -155,13 +155,13 @@ class CoastlineModel(ABC):
         self.Obs = self.data.obs.values
         self.Obs_avg = self.data.average_obs.values
         self.rot = self.data.rot.values
-        self.mask_nanrot = self.data.mask_nan_rot.values
+        self.mask_nan_rot = self.data.mask_nan_rot.values
         self.mask_nan_obs = self.data.mask_nan_obs.values
         self.mask_nan_average_obs = self.data.mask_nan_average_obs.values
         self.depth = self.data.waves_depth.values
         self.bathy_angle = self.data.phi.values
-        self.x_pivotal = self.data.x_pivotal
-        self.y_pivotal = self.data.y_pivotal
+        self.x_pivotal = self.data.x_pivotal.values
+        self.y_pivotal = self.data.y_pivotal.values
         self.xi = self.data.xi.values
         self.yi = self.data.yi.values
         self.xf = self.data.xf.values
@@ -201,7 +201,7 @@ class CoastlineModel(ABC):
         """
         Set up rotation variables for the model.
         """
-        trs, dists_ = point_to_segment_distance(self.x_pivotal, self.y_pivotal, self.xi, self.yi, self.xf, self.yf)
+        trs, dists_ = self._find_two_closest_transects()
         self._interpolate_rot_vars(trs, dists_)
 
 
@@ -290,66 +290,69 @@ class CoastlineModel(ABC):
         self.surge = interpolate_by_distance(self.surge[:, trs], dists_)
         self.Obs = self.rot[~self.mask_nan_rot]
         self.time_obs = self.time_obs[~self.mask_nan_rot]
-        self.depth = interpolate_by_distance(self.depth[trs], dists_)
-        self.bathy_angle = interpolate_by_distance(self.bathy_angle[trs], dists_)
+        self.depth = interpolate_by_distance(self.depth[trs], dists_)[0]
+        self.bathy_angle = interpolate_by_distance(self.bathy_angle[trs], dists_)[0]
+
+    def _find_two_closest_transects(self):
+        
+        """
+        Find the indices and distances of the two transects closest to a pivot point.
+
+        Parameters:
+        - X0, Y0, Xf, Yf: sequences of equal length containing start and end coordinates for each transect.
+        - pivot: tuple (px, py) representing the reference point.
+
+        Returns:
+        - indices: list of the two indices with the smallest distances.
+        - distances: list of the corresponding distances to the pivot point.
+        """
+        px, py = self.x_pivotal, self.y_pivotal
+        X0, Y0 = self.xi, self.yi
+        Xf, Yf = self.xf, self.yf
+        n = len(X0)
+        distances = []
+        for i in range(n):
+            d = self._point_to_segment_distance(px, py, X0[i], Y0[i], Xf[i], Yf[i])
+            distances.append(d)
+        distances = np.array(distances).squeeze()
+
+        # Sort distances and return the two smallest
+        idx_sorted = np.argsort(distances)
+        return idx_sorted[:2].tolist(), distances[idx_sorted[:2]].tolist()
 
 
-def point_to_segment_distance(px, py, x0, y0, xf, yf):
-    """
-    Calculate the minimum distance between a point and a line segment.
+    def _point_to_segment_distance(self, px, py, x0, y0, xf, yf):
+        """
+        Calculate the minimum distance between a point and a line segment.
 
-    Parameters:
-    - px, py: coordinates of the point.
-    - x0, y0: coordinates of the segment start.
-    - xf, yf: coordinates of the segment end.
+        Parameters:
+        - px, py: coordinates of the point.
+        - x0, y0: coordinates of the segment start.
+        - xf, yf: coordinates of the segment end.
 
-    Returns:
-    - The shortest Euclidean distance from point (px, py) to the segment.
-    """
-    # Direction vector of the segment and vector from start to point
-    sx, sy = xf - x0, yf - y0
-    vx, vy = px - x0, py - y0
+        Returns:
+        - The shortest Euclidean distance from point (px, py) to the segment.
+        """
+        # Direction vector of the segment and vector from start to point
+        sx, sy = xf - x0, yf - y0
+        vx, vy = px - x0, py - y0
 
-    # Square length of the segment
-    seg_len2 = sx**2 + sy**2
-    if seg_len2 == 0:
-        # Segment is a single point
-        return np.hypot(vx, vy)
+        # Square length of the segment
+        seg_len2 = sx**2 + sy**2
+        if seg_len2 == 0:
+            # Segment is a single point
+            return np.hypot(vx, vy)
 
-    # Project v onto s normalized by |s|^2
-    t = (vx * sx + vy * sy) / seg_len2
-    t = np.clip(t, 0, 1)
+        # Project v onto s normalized by |s|^2
+        t = (vx * sx + vy * sy) / seg_len2
+        t = np.clip(t, 0, 1)
 
-    # Coordinates of the projection onto the segment
-    proj_x = x0 + t * sx
-    proj_y = y0 + t * sy
+        # Coordinates of the projection onto the segment
+        proj_x = x0 + t * sx
+        proj_y = y0 + t * sy
 
-    # Euclidean distance between point and its projection
-    return np.hypot(px - proj_x, py - proj_y)
-
-def find_two_closest_transects(X0, Y0, Xf, Yf, pivot):
-    """
-    Find the indices and distances of the two transects closest to a pivot point.
-
-    Parameters:
-    - X0, Y0, Xf, Yf: sequences of equal length containing start and end coordinates for each transect.
-    - pivot: tuple (px, py) representing the reference point.
-
-    Returns:
-    - indices: list of the two indices with the smallest distances.
-    - distances: list of the corresponding distances to the pivot point.
-    """
-    px, py = pivot
-    n = len(X0)
-    distances = []
-    for i in range(n):
-        d = point_to_segment_distance(px, py, X0[i], Y0[i], Xf[i], Yf[i])
-        distances.append(d)
-    distances = np.array(distances)
-
-    # Sort distances and return the two smallest
-    idx_sorted = np.argsort(distances)
-    return idx_sorted[:2].tolist(), distances[idx_sorted[:2]].tolist()
+        # Euclidean distance between point and its projection
+        return np.hypot(px - proj_x, py - proj_y)
 
 def interpolate_by_distance(H, distances):
     """
@@ -364,6 +367,8 @@ def interpolate_by_distance(H, distances):
     - numpy.ndarray of shape (m,), interpolated values elementwise, weighted inversely by distance.
       If d1 or d2 is zero, returns the corresponding column from H.
     """
+    if len(H.shape) == 1:
+        H = H.reshape(-1, 2)
     H = np.array(H, dtype=float)
     d = np.array(distances, dtype=float)
     if d[0] == 0:
