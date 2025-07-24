@@ -154,10 +154,18 @@ class CoastlineModel(ABC):
         self.surge = self.data.surge.values
         self.Obs = self.data.obs.values
         self.Obs_avg = self.data.average_obs.values
+        self.rot = self.data.rot.values
+        self.mask_nanrot = self.data.mask_nan_rot.values
         self.mask_nan_obs = self.data.mask_nan_obs.values
         self.mask_nan_average_obs = self.data.mask_nan_average_obs.values
         self.depth = self.data.waves_depth.values
         self.bathy_angle = self.data.phi.values
+        self.x_pivotal = self.data.x_pivotal
+        self.y_pivotal = self.data.y_pivotal
+        self.xi = self.data.xi.values
+        self.yi = self.data.yi.values
+        self.xf = self.data.xf.values
+        self.yf = self.data.yf.values
         self.data.close()
 
     def _setup_crossshore_vars(self):
@@ -187,7 +195,15 @@ class CoastlineModel(ABC):
             self.depth = self.depth[self.cfg['trs']]
             self.bathy_angle = self.bathy_angle[self.cfg['trs']]
 
-    # def _setup_rotation_vars(self):
+
+
+    def _setup_rotation_vars(self):
+        """
+        Set up rotation variables for the model.
+        """
+        trs, dists_ = point_to_segment_distance(self.x_pivotal, self.y_pivotal, self.xi, self.yi, self.xf, self.yf)
+        self._interpolate_rot_vars(trs, dists_)
+
 
     def _compute_time_step(self):
         """
@@ -259,5 +275,103 @@ class CoastlineModel(ABC):
     def _set_parameter_names(self):
         """Assign self.par_names and self.par_values after calibration."""
         pass
+
+    def _interpolate_rot_vars(self, trs, dists_):
+        """
+        Interpolate rotation variables based on the closest transects and distances.
+        
+        :param trs: Indices of the closest transects.
+        :param dists_: Distances to the transects.
+        """
+        self.hs = interpolate_by_distance(self.hs[:, trs], dists_)
+        self.tp = interpolate_by_distance(self.tp[:, trs], dists_)
+        self.dir = interpolate_by_distance(self.dir[:, trs], dists_)
+        self.tide = interpolate_by_distance(self.tide[:, trs], dists_)
+        self.surge = interpolate_by_distance(self.surge[:, trs], dists_)
+        self.Obs = self.rot[~self.mask_nan_rot]
+        self.time_obs = self.time_obs[~self.mask_nan_rot]
+        self.depth = interpolate_by_distance(self.depth[trs], dists_)
+        self.bathy_angle = interpolate_by_distance(self.bathy_angle[trs], dists_)
+
+
+def point_to_segment_distance(px, py, x0, y0, xf, yf):
+    """
+    Calculate the minimum distance between a point and a line segment.
+
+    Parameters:
+    - px, py: coordinates of the point.
+    - x0, y0: coordinates of the segment start.
+    - xf, yf: coordinates of the segment end.
+
+    Returns:
+    - The shortest Euclidean distance from point (px, py) to the segment.
+    """
+    # Direction vector of the segment and vector from start to point
+    sx, sy = xf - x0, yf - y0
+    vx, vy = px - x0, py - y0
+
+    # Square length of the segment
+    seg_len2 = sx**2 + sy**2
+    if seg_len2 == 0:
+        # Segment is a single point
+        return np.hypot(vx, vy)
+
+    # Project v onto s normalized by |s|^2
+    t = (vx * sx + vy * sy) / seg_len2
+    t = np.clip(t, 0, 1)
+
+    # Coordinates of the projection onto the segment
+    proj_x = x0 + t * sx
+    proj_y = y0 + t * sy
+
+    # Euclidean distance between point and its projection
+    return np.hypot(px - proj_x, py - proj_y)
+
+def find_two_closest_transects(X0, Y0, Xf, Yf, pivot):
+    """
+    Find the indices and distances of the two transects closest to a pivot point.
+
+    Parameters:
+    - X0, Y0, Xf, Yf: sequences of equal length containing start and end coordinates for each transect.
+    - pivot: tuple (px, py) representing the reference point.
+
+    Returns:
+    - indices: list of the two indices with the smallest distances.
+    - distances: list of the corresponding distances to the pivot point.
+    """
+    px, py = pivot
+    n = len(X0)
+    distances = []
+    for i in range(n):
+        d = point_to_segment_distance(px, py, X0[i], Y0[i], Xf[i], Yf[i])
+        distances.append(d)
+    distances = np.array(distances)
+
+    # Sort distances and return the two smallest
+    idx_sorted = np.argsort(distances)
+    return idx_sorted[:2].tolist(), distances[idx_sorted[:2]].tolist()
+
+def interpolate_by_distance(H, distances):
+    """
+    Interpolate between two sets of values based on their distances to a pivot point.
+
+    Parameters:
+    - H: array-like of shape (m, 2), where column 0 is values from the first transect
+         and column 1 is values from the second transect.
+    - distances: sequence of two non-negative distances [d1, d2].
+
+    Returns:
+    - numpy.ndarray of shape (m,), interpolated values elementwise, weighted inversely by distance.
+      If d1 or d2 is zero, returns the corresponding column from H.
+    """
+    H = np.array(H, dtype=float)
+    d = np.array(distances, dtype=float)
+    if d[0] == 0:
+        return H[:, 0].copy()
+    if d[1] == 0:
+        return H[:, 1].copy()
+    w = 1 / d
+    w /= w.sum()
+    return w[0] * H[:, 0] + w[1] * H[:, 1]
 
 
