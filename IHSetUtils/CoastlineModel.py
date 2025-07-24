@@ -6,6 +6,7 @@ import pandas as pd
 import fast_optimization as fo
 from scipy.stats import circmean
 from .waves import BreakingPropagation
+from IHSetUtils import Hs12Calc, depthOfClosure, nauticalDir2cartesianDir
 
 
 class CoastlineModel(ABC):
@@ -46,9 +47,9 @@ class CoastlineModel(ABC):
             self._setup_crossshore_vars()
         elif self.type == 'RT':
             self._setup_rotation_vars()
-            
-        # else self.type == 'OL':
-        #     self._setup_oneline_vars()
+        elif self.type == 'OL':
+            self._setup_oneline_vars()
+            self._interp_forcing_1L()
         # else:
         #     raise ValueError(f"Unknown type: {self.type}")
     def _setup_mode(self):
@@ -79,7 +80,10 @@ class CoastlineModel(ABC):
         self.idx_calibration    = jj
         self.idx_validation_obs = np.where((self.time_obs < self.start_date) | (self.time_obs > self.end_date))[0]
         
-        self._split_cal_vars(ii, jj, kk)
+        if self.type == 'CS' or self.type == 'RT':
+            self._split_cal_vars(ii, jj, kk)
+        elif self.type == 'OL':
+            self._split_cal_vars_1L(ii, jj, kk)
 
     def _split_data_dr(self):
         """
@@ -96,6 +100,34 @@ class CoastlineModel(ABC):
         self.time_s = self.time[jj]
         self.Obs = self.Obs[jj]
         self.time_obs = self.time_obs[jj]
+
+    def _split_cal_vars_1L(self, ii, jj, kk):
+        """
+        Set up variables for calibration and validation based on the indices.
+        
+        :param ii: Index for the start date.
+        :param jj: Indices for the calibration period.
+        :param kk: Indices for the observation period.
+        :param mm: Indices for the validation observations.
+        """
+        
+        self.hs   = self.hs[ii:,:]
+        self.tp   = self.tp[ii:,:]
+        self.dir  = self.dir[ii:,:]
+        self.tide = self.tide[ii:,:]
+        self.surge = self.surge[ii:,:]
+
+        self.hs_s   = self.hs[jj,:]
+        self.tp_s   = self.tp[jj,:]
+        self.dir_s  = self.dir[jj,:]
+        self.tide_s = self.tide[jj,:]
+        self.surge_s = self.surge[jj,:]
+
+        self.Obs_splited_  = self.Obs_[kk,:]
+        self.Obs_splited  = self.Obs_splited_.flatten()
+        self.time_obs_s   = self.time_obs[kk]
+
+        self._make_indices_for_obs()
 
     def _split_cal_vars(self, ii, jj, kk):
         """
@@ -122,6 +154,12 @@ class CoastlineModel(ABC):
         self.Obs_splited  = self.Obs[kk]
         self.time_obs_s   = self.time_obs[kk]
 
+        self._make_indices_for_obs()
+
+        
+
+    def _make_indices_for_obs(self):
+        """ Create indices for observations and validation. """
         mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time_s - t)))
         self.idx_obs_splited = mkIdx(self.time_obs_s)
 
@@ -159,7 +197,7 @@ class CoastlineModel(ABC):
         self.mask_nan_obs = self.data.mask_nan_obs.values
         self.mask_nan_average_obs = self.data.mask_nan_average_obs.values
         self.depth = self.data.waves_depth.values
-        self.bathy_angle = self.data.phi.values
+        self.phi = self.data.phi.values
         self.x_pivotal = self.data.x_pivotal.values
         self.y_pivotal = self.data.y_pivotal.values
         self.xi = self.data.xi.values
@@ -182,7 +220,7 @@ class CoastlineModel(ABC):
             self.Obs = self.Obs[~self.mask_nan_average_obs]
             self.time_obs = self.time_obs[~self.mask_nan_average_obs]
             self.depth = np.mean(self.depth)
-            self.bathy_angle = circmean(self.bathy_angle)
+            self.phi = circmean(self.phi)
         elif isinstance(self.cfg['trs'], int):
             self.hs = self.hs[:, self.cfg['trs']]
             self.tp = self.tp[:, self.cfg['trs']]
@@ -193,9 +231,7 @@ class CoastlineModel(ABC):
             self.Obs = self.Obs[~self.mask_nan_obs[:, self.cfg['trs']]]
             self.time_obs = self.time_obs[~self.mask_nan_obs[:, self.cfg['trs']]]
             self.depth = self.depth[self.cfg['trs']]
-            self.bathy_angle = self.bathy_angle[self.cfg['trs']]
-
-
+            self.phi = self.phi[self.cfg['trs']]
 
     def _setup_rotation_vars(self):
         """
@@ -204,6 +240,72 @@ class CoastlineModel(ABC):
         trs, dists_ = self._find_two_closest_transects()
         self._interpolate_rot_vars(trs, dists_)
 
+    def _setup_oneline_vars(self):
+        """
+        Set up one-line variables for the model.
+        """
+        self.switch_Kal = self.cfg['switch_Kal']
+        self.bctype = self.cfg['bctype']
+        self.doc_formula = self.cfg['doc_formula']
+        self.formulation = self.cfg['formulation']
+
+        if self.formulation == 'CERC (1984)':
+            print('Using CERC (1984) formulation')
+            from IHSetUtils.libjit.morfology import CERC_ALST as lst_f
+            self.mb = 1/100 # Default value for mb in Kamphuis (2002)
+            self.D50 = 0.3e-3  # Default value for D50 in Kamphuis (2002)
+            self.is_exp = True
+        elif self.formulation == 'Komar (1998)':
+            print('Using Komar (1998) formulation')
+            from IHSetUtils.libjit.morfology import Komar_ALST as lst_f
+            self.mb = 1/100 # Default value for mb in Kamphuis (2002)
+            self.D50 = 0.3e-3  # Default value for D50 in Kamphuis (2002)
+            self.is_exp = True
+        elif self.formulation == 'Kamphuis (2002)':
+            print('Using Kamphuis (2002) formulation')
+            from IHSetUtils.libjit.morfology import Kamphuis_ALST as lst_f
+            self.mb = self.cfg['mb']
+            self.D50 = self.cfg['D50']
+            self.is_exp = False
+        elif self.formulation == 'Van Rijn (2014)':
+            print('Using Van Rijn (2014) formulation')
+            from IHSetUtils.libjit.morfology import VanRijn_ALST as lst_f
+            self.mb = self.cfg['mb']
+            self.D50 = self.cfg['D50']
+            self.is_exp = False
+        
+        self.lst_f = lst_f
+        
+        if self.breakType == 'Spectral':
+            self.Bcoef = 0.45
+        elif self.breakType == 'Monochromatic':
+            self.Bcoef = 0.78
+
+        bc_conv = [0,0]
+        if self.bctype[0] == 'Dirichlet':
+            bc_conv[0] = 0
+        elif self.bctype[0] == 'Neumann':
+            bc_conv[0] = 1
+        if self.bctype[1] == 'Dirichlet':
+            bc_conv[1] = 0
+        elif self.bctype[1] == 'Neumann':
+            bc_conv[1] = 1
+        
+        self.bctype = np.array(bc_conv)
+
+        self.dir = nauticalDir2cartesianDir(self.dir)
+
+        self.Obs_ = self.Obs
+        self.Obs = self.Obs.flatten()
+
+        self.ntrs = len(self.X0)
+
+        self.doc = np.zeros_like(self.hs_)
+        # self.depth = np.zeros_like(self.hs_) + self.depth
+        # for k in range(self.ntrs+3):
+        for k in range(self.doc.shape[1]):
+            hs12, ts12 = Hs12Calc(self.hs_[:,k], self.tp_[:,k])
+            self.doc[:,k] = depthOfClosure(hs12, ts12, self.doc_formula)
 
     def _compute_time_step(self):
         """
@@ -229,9 +331,9 @@ class CoastlineModel(ABC):
         """
         if self.cfg['switch_brk'] == 1:
             self.break_type = self.cfg['break_type']
-            self.hb, self.dirb, self.depthb = BreakingPropagation(self.hs, self.tp, self.dir, np.repeat(self.depth, len(self.hs)), np.repeat(self.bathy_angle, len(self.hs)), self.break_type)
+            self.hb, self.dirb, self.depthb = BreakingPropagation(self.hs, self.tp, self.dir, np.repeat(self.depth, len(self.hs)), np.repeat(self.phi, len(self.hs)), self.break_type)
             if self.mode == 'calibration':
-                self.hb_s, self.dirb_s, self.depthb_s = BreakingPropagation(self.hs_s, self.tp_s, self.dir_s, np.repeat(self.depth, len(self.hs_s)), np.repeat(self.bathy_angle, len(self.hs_s)), self.break_type)
+                self.hb_s, self.dirb_s, self.depthb_s = BreakingPropagation(self.hs_s, self.tp_s, self.dir_s, np.repeat(self.depth, len(self.hs_s)), np.repeat(self.phi, len(self.hs_s)), self.break_type)
         else:
             self.hb = self.hs
             self.dirb = self.dir
@@ -291,7 +393,7 @@ class CoastlineModel(ABC):
         self.Obs = self.rot[~self.mask_nan_rot]
         self.time_obs = self.time_obs[~self.mask_nan_rot]
         self.depth = interpolate_by_distance(self.depth[trs], dists_)[0]
-        self.bathy_angle = interpolate_by_distance(self.bathy_angle[trs], dists_)[0]
+        self.phi = interpolate_by_distance(self.phi[trs], dists_)[0]
 
     def _find_two_closest_transects(self):
         
@@ -353,6 +455,38 @@ class CoastlineModel(ABC):
 
         # Euclidean distance between point and its projection
         return np.hypot(px - proj_x, py - proj_y)
+    
+    def _interp_forcing_1L(self):
+        """
+        Interpolate the forcing data to the half way of the transects.
+        hs(time, trs) -> hs(time, trs+0.5)
+        tp(time, trs) -> tp(time, trs+0.5)
+        dir(time, trs) -> dir(time, trs+0.5)
+        doc(time, trs) -> doc(time, trs+0.5)
+        depth(trs) -> depth(time, trs+0.5)
+        """
+
+        dist = np.hstack((0,np.cumsum(np.sqrt(np.diff(self.xf)**2 + np.diff(self.yf)**2))))
+        dist_ = dist[1:] - (dist[1:]-dist[:-1])/2
+
+        
+        self.hs_ = np.zeros((len(self.time), self.ntrs+1))
+        self.tp_ = np.zeros((len(self.time), self.ntrs+1))
+        self.dir_ = np.zeros((len(self.time), self.ntrs+1))
+        self.depth_ = np.zeros((self.ntrs+1))
+
+        self.hs_[:, 0], self.hs_[:, -1] = self.hs[:, 0], self.hs[:, -1]
+        self.tp_[:, 0], self.tp_[:, -1] = self.tp[:, 0], self.tp[:, -1]
+        self.dir_[:, 0], self.dir_[:, -1] = self.dir[:, 0], self.dir[:, -1]
+        self.depth_[0], self.depth_[-1] = self.depth[0], self.depth[-1]
+
+        for i in range(len(self.time)):
+            self.hs_[i, 1:-1] = np.interp(dist_, dist, self.hs[i, :])
+            self.tp_[i, 1:-1] = np.interp(dist_, dist, self.tp[i, :])
+            self.dir_[i, 1:-1] = np.interp(dist_, dist, self.dir[i, :])
+
+
+        self.depth_[1:-1] = np.interp(dist_, dist, self.depth)
 
 def interpolate_by_distance(H, distances):
     """

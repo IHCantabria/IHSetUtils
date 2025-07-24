@@ -224,7 +224,6 @@ def CERC_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50): # , fac
     K0 = K[0] if use_scalar_K else 0.0
 
     sin = math.sin
-    cos = math.cos
     sqrt = math.sqrt
     radians = math.radians
 
@@ -275,7 +274,6 @@ def Komar_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
 
     # Main loop
     rho = 1025.0
-    rhos_rho = 2650.0 - rho
     powerg = 9.81 ** 1.5
     cnts = rho * powerg
     for i in range(n):
