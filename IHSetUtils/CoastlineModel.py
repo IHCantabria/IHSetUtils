@@ -116,7 +116,7 @@ class CoastlineModel(ABC):
         self.tide = self.tide[ii,:]
         self.surge = self.surge[ii,:]
 
-        self.Obs = self.Obs[jj,:]
+        self.Obs = self.Obs_[jj,:]
 
     def _split_cal_vars_1L(self, ii, jj, kk):
         """
