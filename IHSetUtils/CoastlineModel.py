@@ -48,8 +48,8 @@ class CoastlineModel(ABC):
         elif self.type == 'RT':
             self._setup_rotation_vars()
         elif self.type == 'OL':
-            self._setup_oneline_vars()
             self._interp_forcing_1L()
+            self._setup_oneline_vars()
         # else:
         #     raise ValueError(f"Unknown type: {self.type}")
     def _setup_mode(self):
@@ -90,16 +90,33 @@ class CoastlineModel(ABC):
         Split the dataset into training and validation sets based on the time range.
         """
         ii = np.where((self.time >= self.start_date) & (self.time <= self.end_date))[0]
-        self.time = self.time[ii]
-        self.hs   = self.hs[ii]
-        self.tp   = self.tp[ii]
-        self.dir  = self.dir[ii]
-        self.tide = self.tide[ii]
-        self.surge = self.surge[ii]
         jj = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))[0]
-        self.time_s = self.time[jj]
-        self.Obs = self.Obs[jj]
+        self.time = self.time[ii]
         self.time_obs = self.time_obs[jj]
+        if self.type == 'CS' or self.type == 'RT':
+            self.split_std_vars(ii, jj)
+        elif self.type == 'OL':
+            self.split_std_vars_1L(ii, jj)
+
+    def split_std_vars(self, ii, jj):
+            self.hs   = self.hs[ii]
+            self.tp   = self.tp[ii]
+            self.dir  = self.dir[ii]
+            self.tide = self.tide[ii]
+            self.surge = self.surge[ii]
+            
+            self.Obs = self.Obs[jj]
+
+
+    def split_std_vars_1L(self, ii, jj):
+
+        self.hs   = self.hs[ii,:]
+        self.tp   = self.tp[ii,:]
+        self.dir  = self.dir[ii,:]
+        self.tide = self.tide[ii,:]
+        self.surge = self.surge[ii,:]
+
+        self.Obs = self.Obs[jj,:]
 
     def _split_cal_vars_1L(self, ii, jj, kk):
         """
@@ -200,10 +217,10 @@ class CoastlineModel(ABC):
         self.phi = self.data.phi.values
         self.x_pivotal = self.data.x_pivotal.values
         self.y_pivotal = self.data.y_pivotal.values
-        self.xi = self.data.xi.values
-        self.yi = self.data.yi.values
-        self.xf = self.data.xf.values
-        self.yf = self.data.yf.values
+        self.X0 = self.data.xi.values
+        self.Y0 = self.data.yi.values
+        self.Xf = self.data.xf.values
+        self.Yf = self.data.yf.values
         self.data.close()
 
     def _setup_crossshore_vars(self):
@@ -248,6 +265,7 @@ class CoastlineModel(ABC):
         self.bctype = self.cfg['bctype']
         self.doc_formula = self.cfg['doc_formula']
         self.formulation = self.cfg['formulation']
+        self.breakType = self.cfg['break_type']
 
         if self.formulation == 'CERC (1984)':
             print('Using CERC (1984) formulation')
@@ -298,13 +316,11 @@ class CoastlineModel(ABC):
         self.Obs_ = self.Obs
         self.Obs = self.Obs.flatten()
 
-        self.ntrs = len(self.X0)
-
-        self.doc = np.zeros_like(self.hs_)
+        self.doc = np.zeros_like(self.hs)
         # self.depth = np.zeros_like(self.hs_) + self.depth
         # for k in range(self.ntrs+3):
         for k in range(self.doc.shape[1]):
-            hs12, ts12 = Hs12Calc(self.hs_[:,k], self.tp_[:,k])
+            hs12, ts12 = Hs12Calc(self.hs[:,k], self.tp[:,k])
             self.doc[:,k] = depthOfClosure(hs12, ts12, self.doc_formula)
 
     def _compute_time_step(self):
@@ -356,8 +372,6 @@ class CoastlineModel(ABC):
     def calibrate(self):
         """Generic calibration flow using fast_optimization."""
         sol, objs, hist = self.calibr_cfg.calibrate(self)
-        if getattr(self, 'is_exp', False):
-            sol = np.exp(sol)
         self.solution, self.objectives, self.hist = sol, objs, hist
         self.run(self.solution)
         
@@ -409,8 +423,8 @@ class CoastlineModel(ABC):
         - distances: list of the corresponding distances to the pivot point.
         """
         px, py = self.x_pivotal, self.y_pivotal
-        X0, Y0 = self.xi, self.yi
-        Xf, Yf = self.xf, self.yf
+        X0, Y0 = self.X0, self.Y0
+        Xf, Yf = self.Xf, self.Yf
         n = len(X0)
         distances = []
         for i in range(n):
@@ -466,27 +480,34 @@ class CoastlineModel(ABC):
         depth(trs) -> depth(time, trs+0.5)
         """
 
-        dist = np.hstack((0,np.cumsum(np.sqrt(np.diff(self.xf)**2 + np.diff(self.yf)**2))))
+        self.ntrs = len(self.X0) # Number of transects
+
+        dist = np.hstack((0,np.cumsum(np.sqrt(np.diff(self.Xf)**2 + np.diff(self.Yf)**2))))
         dist_ = dist[1:] - (dist[1:]-dist[:-1])/2
 
         
-        self.hs_ = np.zeros((len(self.time), self.ntrs+1))
-        self.tp_ = np.zeros((len(self.time), self.ntrs+1))
-        self.dir_ = np.zeros((len(self.time), self.ntrs+1))
-        self.depth_ = np.zeros((self.ntrs+1))
+        hs_ = np.zeros((len(self.time), self.ntrs+1))
+        tp_ = np.zeros((len(self.time), self.ntrs+1))
+        dir_ = np.zeros((len(self.time), self.ntrs+1))
+        depth_ = np.zeros((self.ntrs+1))
 
-        self.hs_[:, 0], self.hs_[:, -1] = self.hs[:, 0], self.hs[:, -1]
-        self.tp_[:, 0], self.tp_[:, -1] = self.tp[:, 0], self.tp[:, -1]
-        self.dir_[:, 0], self.dir_[:, -1] = self.dir[:, 0], self.dir[:, -1]
-        self.depth_[0], self.depth_[-1] = self.depth[0], self.depth[-1]
+        hs_[:, 0], hs_[:, -1] = self.hs[:, 0], self.hs[:, -1]
+        tp_[:, 0], tp_[:, -1] = self.tp[:, 0], self.tp[:, -1]
+        dir_[:, 0], dir_[:, -1] = self.dir[:, 0], self.dir[:, -1]
+        depth_[0], depth_[-1] = self.depth[0], self.depth[-1]
 
         for i in range(len(self.time)):
-            self.hs_[i, 1:-1] = np.interp(dist_, dist, self.hs[i, :])
-            self.tp_[i, 1:-1] = np.interp(dist_, dist, self.tp[i, :])
-            self.dir_[i, 1:-1] = np.interp(dist_, dist, self.dir[i, :])
+            hs_[i, 1:-1] = np.interp(dist_, dist, self.hs[i, :])
+            tp_[i, 1:-1] = np.interp(dist_, dist, self.tp[i, :])
+            dir_[i, 1:-1] = np.interp(dist_, dist, self.dir[i, :])
 
+        depth_[1:-1] = np.interp(dist_, dist, self.depth)
 
-        self.depth_[1:-1] = np.interp(dist_, dist, self.depth)
+        self.hs = hs_
+        self.tp = tp_
+        self.dir = dir_
+        self.depth = depth_
+
 
 def interpolate_by_distance(H, distances):
     """
@@ -512,5 +533,3 @@ def interpolate_by_distance(H, distances):
     w = 1 / d
     w /= w.sum()
     return w[0] * H[:, 0] + w[1] * H[:, 1]
-
-
