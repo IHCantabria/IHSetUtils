@@ -47,11 +47,10 @@ class CoastlineModel(ABC):
             self._setup_crossshore_vars()
         elif self.type == 'RT':
             self._setup_rotation_vars()
-        elif self.type == 'OL':
+        elif self.type == 'OL' or self.type == 'HY':
             self._interp_forcing_1L()
             self._setup_oneline_vars()
-        # else:
-        #     raise ValueError(f"Unknown type: {self.type}")
+
     def _setup_mode(self):
         """
         Set up the model based on the specified mode.
@@ -82,7 +81,7 @@ class CoastlineModel(ABC):
         
         if self.type == 'CS' or self.type == 'RT':
             self._split_cal_vars(ii, jj, kk)
-        elif self.type == 'OL':
+        elif self.type == 'OL' or self.type == 'HY':
             self._split_cal_vars_1L(ii, jj, kk)
 
     def _split_data_dr(self):
@@ -95,7 +94,7 @@ class CoastlineModel(ABC):
         self.time_obs = self.time_obs[jj]
         if self.type == 'CS' or self.type == 'RT':
             self.split_std_vars(ii, jj)
-        elif self.type == 'OL':
+        elif self.type == 'OL' or self.type == 'HY':
             self.split_std_vars_1L(ii, jj)
 
     def split_std_vars(self, ii, jj):
