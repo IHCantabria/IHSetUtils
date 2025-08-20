@@ -139,7 +139,7 @@ def LinearShoal(H1, T1, rel1, h1, h2, bathy_angle):
     CG2 = GroupCelerity(L2, T1, h2)
     rel2 = Snell_Law(L1, L2, rel1)
     KS = math.sqrt(CG1 / CG2)
-    KR = math.sqrt(math.cos(math.radians(rel1)) / math.cos(math.radians(rel2)))
+    KR = math.sqrt(math.cos(math.radians(rel1)) / (math.cos(math.radians(rel2)) + 1e-6))
     H2 = H1 * KS * KR
     DIR2 = abs_angle_cartesianL(rel2, bathy_angle)
 

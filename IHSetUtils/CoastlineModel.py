@@ -203,6 +203,7 @@ class CoastlineModel(ABC):
         self.time_obs = pd.to_datetime(self.data.time_obs.values)
         self.hs = self.data.hs.values
         self.tp = self.data.tp.values
+        self.tp[self.tp < 3] = 3  # Ensure no capillary waves < 3s
         self.dir = self.data.dir.values
         self.tide = self.data.tide.values
         self.surge = self.data.surge.values
