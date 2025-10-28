@@ -75,9 +75,9 @@ class CoastlineModel(ABC):
         self.time_s = self.time[jj]
         kk = np.where((self.time_obs >= self.start_date) & (self.time_obs <= self.end_date))[0]
 
-        self.idx_validation     = np.where((self.time < self.start_date) | (self.time > self.end_date))[0]
+        self.idx_validation     = np.where((self.time > self.end_date))[0]
         self.idx_calibration    = jj
-        self.idx_validation_obs = np.where((self.time_obs < self.start_date) | (self.time_obs > self.end_date))[0]
+        self.idx_validation_obs = np.where((self.time_obs > self.end_date))[0]
         
         if self.type == 'CS' or self.type == 'RT':
             self._split_cal_vars(ii, jj, kk)
@@ -181,7 +181,7 @@ class CoastlineModel(ABC):
 
         # Validation
         if len(self.idx_validation)>0:
-            mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time[self.idx_validation] - t)))
+            mkIdx = np.vectorize(lambda t: np.argmin(np.abs(self.time - t)))
             if len(self.idx_validation_obs)>0:
                 self.idx_validation_for_obs = mkIdx(self.time_obs[self.idx_validation_obs])
             else:
