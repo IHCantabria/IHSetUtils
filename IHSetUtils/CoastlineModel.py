@@ -60,10 +60,18 @@ class CoastlineModel(ABC):
             self.metrics = self.cfg['metrics']
             self.lb = self.cfg['lb']
             self.ub = self.cfg['ub']
-            self.calibr_cfg = fo.config_cal(self.cfg)
+            self.calibr_cfg = fo.ConfigCal(self.cfg)
             self._split_data_c()
         elif self.mode == 'standalone':
             self._split_data_dr()
+        elif self.mode == 'assimilation':
+            self.cal_alg = self.cfg['cal_alg']
+            self.metrics = self.cfg['metrics']
+            self.lb = self.cfg['lb']
+            self.ub = self.cfg['ub']
+            self.calibr_as = fo.ConfigAssim(self.cfg)
+            self._split_data_c()
+            self.idx_assim = range(1, len(self.idx_obs_splited))
             
     def _split_data_c(self):
         """
@@ -83,6 +91,7 @@ class CoastlineModel(ABC):
             self._split_cal_vars(ii, jj, kk)
         elif self.type == 'OL' or self.type == 'HY':
             self._split_cal_vars_1L(ii, jj, kk)
+
 
     def _split_data_dr(self):
         """
@@ -105,7 +114,6 @@ class CoastlineModel(ABC):
             self.surge = self.surge[ii]
             
             self.Obs = self.Obs[jj]
-
 
     def split_std_vars_1L(self, ii, jj):
 
@@ -373,6 +381,12 @@ class CoastlineModel(ABC):
         """Generic calibration flow using fast_optimization."""
         sol, objs, hist = self.calibr_cfg.calibrate(self)
         self.solution, self.objectives, self.hist = sol, objs, hist
+        self.run(self.solution)
+
+    def assimilate(self):
+        """Generic calibration flow using fast_optimization."""
+        res = self.calibr_as.assimilate(self)
+        self.solution, self.hist = res['theta_best'], res['ensemble_history']
         self.run(self.solution)
         
     def run(self, par: np.ndarray) -> np.ndarray:
