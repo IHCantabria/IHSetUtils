@@ -346,7 +346,7 @@ class CoastlineModel(ABC):
         # Now we calculate the dt from the time variable
         mkDT = np.vectorize(lambda i: (self.time[i+1] - self.time[i]).total_seconds()/3600)
         self.dt = mkDT(np.arange(0, len(self.time)-1))
-        if self.mode == 'calibration':
+        if self.mode == 'calibration' or self.mode == 'assimilation':
             mkDTsplited = np.vectorize(lambda i: (self.time_s[i+1] - self.time_s[i]).total_seconds()/3600)
             self.dt_s = mkDTsplited(np.arange(0, len(self.time_s)-1))
 
