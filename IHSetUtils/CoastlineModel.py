@@ -65,10 +65,11 @@ class CoastlineModel(ABC):
         elif self.mode == 'standalone':
             self._split_data_dr()
         elif self.mode == 'assimilation':
-            self.cal_alg = self.cfg['cal_alg']
-            self.metrics = self.cfg['metrics']
-            self.lb = self.cfg['lb']
-            self.ub = self.cfg['ub']
+            # self.cal_alg = self.cfg['cal_alg']
+            # self.metrics = self.cfg['metrics']
+            if self.cfg['clip_to_bounds']:
+                self.lb = self.cfg['lb']
+                self.ub = self.cfg['ub']
             self.calibr_as = fo.ConfigAssim(self.cfg)
             self._split_data_c()
             self.idx_assim = range(1, len(self.idx_obs_splited))
