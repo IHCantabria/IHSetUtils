@@ -80,9 +80,9 @@ class CoastlineModel(ABC):
         """
         ii = np.where(self.time>=self.start_date)[0][0]
         self.time = self.time[ii:]
-        jj = np.where((self.time >= self.start_date))[0]
+        jj = np.where((self.time >= self.start_date) & (self.time < self.end_date))[0]
         self.time_s = self.time[jj]
-        kk = np.where((self.time_obs >= self.start_date))[0]
+        kk = np.where((self.time_obs >= self.start_date) & (self.time_obs < self.end_date))[0]
 
         self.idx_validation     = np.where((self.time > self.end_date))[0]
         self.idx_calibration    = jj
