@@ -67,9 +67,9 @@ class CoastlineModel(ABC):
         elif self.mode == 'assimilation':
             # self.cal_alg = self.cfg['cal_alg']
             # self.metrics = self.cfg['metrics']
-            if self.cfg['clip_to_bounds']:
-                self.lb = self.cfg['lb']
-                self.ub = self.cfg['ub']
+            # if self.cfg['clip_to_bounds']:
+            self.lb = self.cfg['lb']
+            self.ub = self.cfg['ub']
             self.calibr_as = fo.ConfigAssim(self.cfg)
             self._split_data_c()
             self.idx_assim = range(1, len(self.idx_obs_splited))
@@ -386,9 +386,15 @@ class CoastlineModel(ABC):
 
     def assimilate(self):
         """Generic calibration flow using fast_optimization."""
-        res = self.calibr_as.assimilate(self)
-        self.solution, self.hist = res['theta_best'], res['ensemble_history']
+        self.res = self.calibr_as.assimilate(self)
+        self.solution, self.hist = self.res['theta_best'], self.res['ensemble_history']
+        # theta_log = self.res['theta_history']  # shape (T,D) in log-space for a, C+, C-
+        # theta_star = theta_log[-10:].mean(axis=0)
+        # convert to physical params (your class logic)
+        # self.assim_series   = self.res["y_analysis_mean"].ravel()
+        # self.run(theta_star)
         self.run(self.solution)
+
         
     def run(self, par: np.ndarray) -> np.ndarray:
         """
