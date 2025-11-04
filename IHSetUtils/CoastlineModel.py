@@ -391,7 +391,7 @@ class CoastlineModel(ABC):
         # theta_log = self.res['theta_history']  # shape (T,D) in log-space for a, C+, C-
         # theta_star = theta_log[-10:].mean(axis=0)
         # convert to physical params (your class logic)
-        # self.assim_series   = self.res["y_analysis_mean"].ravel()
+        self.assim_series   = self.res["y_analysis_mean"].ravel()
         # self.run(theta_star)
         self.run(self.solution)
 
