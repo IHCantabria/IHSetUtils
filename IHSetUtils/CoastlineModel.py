@@ -70,6 +70,7 @@ class CoastlineModel(ABC):
             # if self.cfg['clip_to_bounds']:
             self.lb = self.cfg['lb']
             self.ub = self.cfg['ub']
+            self.cfg['parameter_process_std'] = np.zeros(len(self.lb))
             self.calibr_as = fo.ConfigAssim(self.cfg)
             self._split_data_c()
             self.idx_assim = range(1, len(self.idx_obs_splited))
