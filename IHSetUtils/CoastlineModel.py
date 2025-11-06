@@ -41,7 +41,7 @@ class CoastlineModel(ABC):
 
     def _set_type(self):
         """
-        Set up the type of coastline model based on the configuration.
+        Set up the type of coastline model based on the configuration. 
         """
         if self.type == 'CS':
             self._setup_crossshore_vars()
@@ -529,6 +529,27 @@ class CoastlineModel(ABC):
         self.tp = tp_
         self.dir = dir_
         self.depth = depth_
+    
+    def _sample_trunc_normal(n: int,
+                         mu: np.ndarray,      # (D,)
+                         sigma: np.ndarray,   # (D,)
+                         lb: np.ndarray,      # (D,)
+                         ub: np.ndarray       # (D,)
+                        ) -> np.ndarray:
+        """
+        Draw n samples from independent 1D truncated normals per dimension.
+        Vectorized rejection sampling; no SciPy needed.
+        """
+        D = mu.size
+        X = np.random.normal(mu, sigma, size=(n, D))
+        # Rejection loop (usually very few iterations if sigma is reasonable)
+        mask = (X < lb) | (X > ub)
+        while np.any(mask):
+            num_bad = mask.sum()
+            X[mask] = np.random.normal(mu.repeat(n).reshape(n, D)[mask],
+                                    sigma.repeat(n).reshape(n, D)[mask])
+            mask = (X < lb) | (X > ub)
+        return X
 
 
 def interpolate_by_distance(H, distances):
@@ -555,3 +576,5 @@ def interpolate_by_distance(H, distances):
     w = 1 / d
     w /= w.sum()
     return w[0] * H[:, 0] + w[1] * H[:, 1]
+
+
