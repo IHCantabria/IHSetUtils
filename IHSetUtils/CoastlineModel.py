@@ -68,6 +68,7 @@ class CoastlineModel(ABC):
             # self.cal_alg = self.cfg['cal_alg']
             # self.metrics = self.cfg['metrics']
             # if self.cfg['clip_to_bounds']:
+            self.start_date = self.time_obs[0]
             self.lb = self.cfg['lb']
             self.ub = self.cfg['ub']
             self.cfg['parameter_process_std'] = np.zeros(len(self.lb))
