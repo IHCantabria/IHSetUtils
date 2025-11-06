@@ -530,26 +530,26 @@ class CoastlineModel(ABC):
         self.dir = dir_
         self.depth = depth_
     
-    def _sample_trunc_normal(n: int,
-                         mu: np.ndarray,      # (D,)
-                         sigma: np.ndarray,   # (D,)
-                         lb: np.ndarray,      # (D,)
-                         ub: np.ndarray       # (D,)
+def sample_trunc_normal(n: int,
+                        mu: np.ndarray,      # (D,)
+                        sigma: np.ndarray,   # (D,)
+                        lb: np.ndarray,      # (D,)
+                        ub: np.ndarray       # (D,)
                         ) -> np.ndarray:
-        """
-        Draw n samples from independent 1D truncated normals per dimension.
-        Vectorized rejection sampling; no SciPy needed.
-        """
-        D = mu.size
-        X = np.random.normal(mu, sigma, size=(n, D))
-        # Rejection loop (usually very few iterations if sigma is reasonable)
+    """
+    Draw n samples from independent 1D truncated normals per dimension.
+    Vectorized rejection sampling; no SciPy needed.
+    """
+    D = mu.size
+    X = np.random.normal(mu, sigma, size=(n, D))
+    # Rejection loop (usually very few iterations if sigma is reasonable)
+    mask = (X < lb) | (X > ub)
+    while np.any(mask):
+        num_bad = mask.sum()
+        X[mask] = np.random.normal(mu.repeat(n).reshape(n, D)[mask],
+                                sigma.repeat(n).reshape(n, D)[mask])
         mask = (X < lb) | (X > ub)
-        while np.any(mask):
-            num_bad = mask.sum()
-            X[mask] = np.random.normal(mu.repeat(n).reshape(n, D)[mask],
-                                    sigma.repeat(n).reshape(n, D)[mask])
-            mask = (X < lb) | (X > ub)
-        return X
+    return X
 
 
 def interpolate_by_distance(H, distances):
