@@ -213,7 +213,7 @@ def ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50, formula):
 
 
 @njit(fastmath=True, cache=True)
-def CERC_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50): # , fac
+def CERC_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50, dhbdx): # , fac
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
@@ -224,6 +224,7 @@ def CERC_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50): # , fac
     K0 = K[0] if use_scalar_K else 0.0
 
     sin = math.sin
+    cos = math.cos
     sqrt = math.sqrt
     radians = math.radians
 
@@ -252,13 +253,14 @@ def CERC_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50): # , fac
                 powerH = H ** 2.5
                 q0_i = Ki * times * powerH
                 q0[i] = q0_i
-                q[i] = q0[i]*(sin(2*radians(rel)))
+                i_mb = 1 / mb
+                q[i] = q0[i]*(sin(2*radians(rel)) - i_mb * dhbdx[i] * cos(radians(rel)))
 
 
     return q, q0
 
 @njit(fastmath=True, cache=True)
-def Komar_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
+def Komar_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50, dhbdx):
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
@@ -303,7 +305,7 @@ def Komar_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
 
 
 @njit(fastmath=True, cache=True)
-def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
+def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50, dhbdx):
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)
@@ -355,7 +357,7 @@ def Kamphuis_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
 
 
 @njit(fastmath=True, cache=True)
-def VanRijn_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50):
+def VanRijn_ALST(Hb, Tp, Dirb, hb, bathy_angle, K, mb, D50, dhbdx):
     # Alongshore sediment transport (further optimized)
     n = Hb.shape[0]
     q = np.zeros(n, dtype=np.float64)

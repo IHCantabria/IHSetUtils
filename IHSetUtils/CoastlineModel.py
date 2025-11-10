@@ -71,7 +71,7 @@ class CoastlineModel(ABC):
             self.start_date = self.time_obs[0]
             self.lb = self.cfg['lb']
             self.ub = self.cfg['ub']
-            self.cfg['parameter_process_std'] = np.zeros(len(self.lb))
+            # self.cfg['parameter_process_std'] = np.zeros(len(self.lb))
             self.calibr_as = fo.ConfigAssim(self.cfg)
             self._split_data_c()
             self.idx_assim = range(1, len(self.idx_obs_splited))
@@ -393,7 +393,7 @@ class CoastlineModel(ABC):
         # theta_log = self.res['theta_history']  # shape (T,D) in log-space for a, C+, C-
         # theta_star = theta_log[-10:].mean(axis=0)
         # convert to physical params (your class logic)
-        self.assim_series   = self.res["y_analysis_mean"].ravel()
+        self.assim_series   = self.res["y_analysis_mean"]
         # self.run(theta_star)
         self.run(self.solution)
 
